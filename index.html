@@ -3,436 +3,415 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Polymarket Bot</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Polybot</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   :root {
-    --bg: #0a0a0f; --bg2: #12121a; --bg3: #1a1a24;
-    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
-    --text: #f0f0f5; --text2: #8888a0; --text3: #555568;
-    --green: #22c55e; --green-bg: rgba(34,197,94,0.1);
-    --red: #ef4444; --red-bg: rgba(239,68,68,0.1);
-    --accent: #6366f1; --accent-bg: rgba(99,102,241,0.1);
-    --yellow: #f59e0b;
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --accent: #6366f1;
+    --accent-dim: rgba(99,102,241,0.15);
+    --green: #22c55e;
+    --red: #ef4444;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
   }
-  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; min-height: 100vh; }
-  .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-  .logo { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; }
-  .logo span { color: var(--accent); }
-  .header-left { display: flex; align-items: center; gap: 10px; }
-  .delay-badge { background: var(--green-bg); border-radius: 8px; padding: 3px 10px; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--green); }
-  .status-pill { display: flex; align-items: center; gap: 6px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text2); }
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
-  .dot.green { background: var(--green); animation: pulse 2s infinite; }
-  .dot.yellow { background: var(--yellow); }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .content { padding: 20px; max-width: 480px; margin: 0 auto; }
-  .setup-card { background: var(--bg2); border: 1px solid var(--border2); border-radius: 18px; padding: 24px; margin-top: 20px; }
-  .setup-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 8px; }
-  .setup-desc { font-size: 13px; color: var(--text2); text-align: center; line-height: 1.6; margin-bottom: 20px; }
-  .input-group { margin-bottom: 12px; }
-  .input-label { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
-  .input-field { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 12px; padding: 12px 16px; font-size: 13px; color: var(--text); font-family: 'DM Mono', monospace; outline: none; -webkit-appearance: none; }
-  .input-field:focus { border-color: var(--accent); }
-  .input-field::placeholder { color: var(--text3); }
-  .info-box-setup { background: var(--accent-bg); border: 1px solid rgba(99,102,241,0.2); border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; font-size: 12px; color: var(--text2); line-height: 1.7; }
-  .info-box-setup b { color: var(--text); }
-  .remember-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; cursor: pointer; }
-  .remember-row input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
-  .remember-row span { font-size: 13px; color: var(--text2); }
-  .connect-btn { width: 100%; padding: 16px; font-size: 16px; font-weight: 600; background: var(--accent); color: white; border: none; border-radius: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
-  .connect-btn:active { transform: scale(0.98); }
-  .connect-btn:disabled { opacity: 0.5; }
-  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
-  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
-  .stat-label { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-  .stat-value { font-size: 20px; font-weight: 600; }
-  .stat-value.green { color: var(--green); }
-  .section-label { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-  .market-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
-  .market-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; cursor: pointer; -webkit-user-select: none; }
-  .market-item:active { transform: scale(0.98); }
-  .market-item.selected { border-color: var(--accent); background: var(--accent-bg); }
-  .market-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--text2); line-height: 1.4; }
-  .market-item.selected .market-title { color: var(--text); }
-  .market-vol { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-bottom: 6px; }
-  .odds-row { display: flex; gap: 8px; }
-  .odd-badge { font-size: 12px; font-family: 'DM Mono', monospace; font-weight: 500; padding: 4px 12px; border-radius: 8px; }
-  .odd-yes { background: var(--green-bg); color: var(--green); }
-  .odd-no { background: var(--red-bg); color: var(--red); }
-  .bet-panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 18px; padding: 20px; margin-bottom: 24px; display: none; }
-  .bet-panel.visible { display: block; animation: slideUp 0.2s ease; }
-  @keyframes slideUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .panel-title { font-size: 13px; color: var(--text2); margin-bottom: 16px; line-height: 1.4; }
-  .side-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
-  .side-btn { padding: 12px; font-size: 15px; font-weight: 600; border: 1px solid var(--border2); border-radius: 12px; background: var(--bg3); color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; -webkit-user-select: none; }
-  .side-btn:active { transform: scale(0.97); }
-  .side-btn.yes.active { background: var(--green-bg); border-color: var(--green); color: var(--green); }
-  .side-btn.no.active { background: var(--red-bg); border-color: var(--red); color: var(--red); }
-  .amount-label { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-  .quick-amounts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
-  .quick-btn { padding: 11px 4px; font-size: 14px; font-weight: 500; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg3); color: var(--text2); cursor: pointer; font-family: 'DM Mono', monospace; text-align: center; -webkit-user-select: none; }
-  .quick-btn:active { transform: scale(0.95); }
-  .quick-btn.active { background: var(--accent-bg); border-color: var(--accent); color: var(--text); }
-  .amount-input-wrap { display: flex; align-items: center; background: var(--bg3); border: 1px solid var(--border2); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
-  .amount-input-wrap:focus-within { border-color: var(--accent); }
-  .currency-sign { padding: 0 14px; font-size: 20px; font-weight: 600; color: var(--text2); font-family: 'DM Mono', monospace; }
-  .amount-input { flex: 1; background: transparent; border: none; outline: none; font-size: 26px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; padding: 14px 0; -webkit-appearance: none; }
-  .amount-input::placeholder { color: var(--text3); }
-  .clear-btn { padding: 0 16px; font-size: 22px; color: var(--text3); cursor: pointer; background: none; border: none; }
-  .info-box { background: var(--bg3); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; font-family: 'DM Mono', monospace; }
-  .info-row { display: flex; justify-content: space-between; padding: 3px 0; }
-  .info-row .lbl { color: var(--text3); }
-  .info-row .val { color: var(--text2); }
-  .info-row.payout .val { color: var(--green); font-weight: 500; }
-  .info-divider { border-top: 1px solid var(--border); margin: 6px 0; }
-  .bet-btn { width: 100%; padding: 16px; font-size: 16px; font-weight: 600; background: var(--accent); color: white; border: none; border-radius: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
-  .bet-btn:active { transform: scale(0.98); }
-  .bet-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .bet-btn.success { background: var(--green); }
-  .bet-btn.fail { background: var(--red); }
-  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 12px 20px; font-size: 13px; font-family: 'DM Mono', monospace; white-space: nowrap; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
-  .toast.show { opacity: 1; }
-  .toast.ok { border-color: var(--green); color: var(--green); }
-  .toast.err { border-color: var(--red); color: var(--red); }
-  .log-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 30px; }
-  .log-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; animation: slideUp 0.2s ease; }
-  .log-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-  .log-badge { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 6px; }
-  .log-badge.yes { background: var(--green-bg); color: var(--green); }
-  .log-badge.no { background: var(--red-bg); color: var(--red); }
-  .log-badge.fail { background: rgba(239,68,68,0.15); color: var(--red); }
-  .log-time { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
-  .log-market { font-size: 12px; color: var(--text2); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .log-detail { font-size: 12px; font-family: 'DM Mono', monospace; }
-  .log-detail.ok { color: var(--green); }
-  .log-detail.err { color: var(--red); }
-  .loading { text-align: center; padding: 30px; color: var(--text3); font-size: 13px; font-family: 'DM Mono', monospace; }
-  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 10px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+  code, .mono { font-family: 'DM Mono', monospace; }
+
+  #login-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px;
+  }
+  .login-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 32px 28px; width: 100%; max-width: 400px;
+  }
+  .login-title { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; letter-spacing: .04em; }
+  .field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    outline: none; transition: border-color .15s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .btn-primary {
+    width: 100%; background: var(--accent); color: #fff; border: none;
+    border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-top: 8px; transition: opacity .15s;
+  }
+  .btn-primary:hover { opacity: .85; }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+  .error-msg { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
+
+  #bot-screen { display: none; padding: 16px; max-width: 480px; margin: 0 auto; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-top: 8px; }
+  .top-bar h1 { font-size: 18px; font-weight: 600; }
+  .balance-chip {
+    background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 20px;
+    padding: 4px 12px; font-size: 13px; color: var(--accent); font-family: 'DM Mono', monospace;
+  }
+  .logout-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+
+  .search-wrap { position: relative; margin-bottom: 16px; }
+  .search-wrap input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px 10px 36px; color: var(--text); font-size: 14px; outline: none;
+    transition: border-color .15s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; }
+
+  .markets-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .market-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; cursor: pointer; transition: border-color .15s;
+  }
+  .market-card:hover, .market-card.active { border-color: var(--accent); background: var(--surface2); }
+  .market-q { font-size: 14px; font-weight: 500; margin-bottom: 8px; line-height: 1.4; }
+  .market-prices { display: flex; gap: 8px; }
+  .price-yes { background: rgba(34,197,94,.12); color: var(--green); border-radius: 6px; padding: 3px 10px; font-size: 12px; font-family: 'DM Mono', monospace; }
+  .price-no  { background: rgba(239,68,68,.12);  color: var(--red);   border-radius: 6px; padding: 3px 10px; font-size: 12px; font-family: 'DM Mono', monospace; }
+
+  #bet-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; margin-bottom: 20px; display: none;
+  }
+  .bet-title { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .bet-market-name { font-size: 15px; font-weight: 500; margin-bottom: 16px; line-height: 1.4; }
+  .yn-buttons { display: flex; gap: 10px; margin-bottom: 14px; }
+  .btn-yes, .btn-no {
+    flex: 1; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: 2px solid transparent; transition: all .15s;
+  }
+  .btn-yes { background: rgba(34,197,94,.12); color: var(--green); border-color: rgba(34,197,94,.2); }
+  .btn-no  { background: rgba(239,68,68,.12);  color: var(--red);   border-color: rgba(239,68,68,.2); }
+  .btn-yes.selected { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-no.selected  { background: var(--red);   color: #fff; border-color: var(--red); }
+
+  .quick-btns { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .quick-btn {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-size: 13px; padding: 5px 12px; cursor: pointer; transition: all .15s;
+  }
+  .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .amount-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .amount-input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; color: var(--text); font-size: 14px; font-family: 'DM Mono', monospace; outline: none;
+    transition: border-color .15s;
+  }
+  .amount-input:focus { border-color: var(--accent); }
+  .btn-bet {
+    width: 100%; padding: 13px; border-radius: 10px; border: none; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: all .15s; letter-spacing: .02em;
+  }
+  .btn-bet.yes { background: var(--green); color: #fff; }
+  .btn-bet.no  { background: var(--red);   color: #fff; }
+  .btn-bet:disabled { opacity: .4; cursor: not-allowed; }
+
+  .section-label { font-size: 11px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .hist-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .hist-left { flex: 1; }
+  .hist-q { font-size: 13px; color: var(--text); margin-bottom: 3px; }
+  .hist-meta { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .hist-badge { font-size: 12px; font-family: 'DM Mono', monospace; padding: 3px 8px; border-radius: 5px; }
+  .hist-badge.yes { background: rgba(34,197,94,.15); color: var(--green); }
+  .hist-badge.no  { background: rgba(239,68,68,.15);  color: var(--red); }
+
+  .loading { text-align: center; color: var(--muted); padding: 32px; font-size: 14px; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .action-btn { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; font-family: 'DM Mono', monospace; }
-  .exit-btn { font-size: 12px; color: var(--text3); background: none; border: none; cursor: pointer; font-family: 'DM Mono', monospace; }
-  .wallet-info { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-bottom: 16px; }
-  .wallet-info span { color: var(--green); }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-left">
-    <div class="logo">poly<span>bot</span></div>
-    <span class="delay-badge">⚡ ~50ms</span>
-  </div>
-  <div class="status-pill">
-    <div class="dot" id="sdot"></div>
-    <span id="stxt">не подключён</span>
-  </div>
-</div>
-
-<div class="content">
-  <div id="setup">
-    <div class="setup-card">
-      <p class="setup-title">Polymarket Bot</p>
-      <p class="setup-desc">Введите API ключи от Polymarket</p>
-
-      <div class="info-box-setup">
-        <b>Как получить ключи:</b><br>
-        1. polymarket.com → любой рынок → Buy<br>
-        2. Подписать в MetaMask<br>
-        3. Скопировать apiKey, secret, passphrase<br>
-        4. Адрес кошелька — из профиля Polymarket
-      </div>
-
-      <div class="input-group">
-        <label class="input-label">API Key</label>
-        <input type="text" class="input-field" id="apikey" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
-      </div>
-      <div class="input-group">
-        <label class="input-label">Secret</label>
-        <input type="password" class="input-field" id="secret" placeholder="secret..." autocomplete="off" spellcheck="false">
-      </div>
-      <div class="input-group">
-        <label class="input-label">Passphrase</label>
-        <input type="password" class="input-field" id="passphrase" placeholder="passphrase..." autocomplete="off" spellcheck="false">
-      </div>
-      <div class="input-group">
-        <label class="input-label">Адрес кошелька Polymarket</label>
-        <input type="text" class="input-field" id="address" placeholder="0x..." autocomplete="off" spellcheck="false">
-      </div>
-
-      <label class="remember-row">
-        <input type="checkbox" id="remember" checked>
-        <span>Запомнить на этом устройстве</span>
-      </label>
-
-      <button class="connect-btn" id="conn-btn" onclick="connect()">⚡ Войти</button>
-    </div>
-  </div>
-
-  <div id="main" style="display:none;">
-    <div class="wallet-info" id="wallet-info"></div>
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-label">баланс</div><div class="stat-value green" id="bal">—</div></div>
-      <div class="stat-card"><div class="stat-label">ставок</div><div class="stat-value" id="bcnt">0</div></div>
-    </div>
-    <div class="top-row">
-      <div class="section-label" style="margin:0;">рынки</div>
-      <div style="display:flex;gap:8px;">
-        <button class="action-btn" onclick="loadMarkets()">↻</button>
-        <button class="exit-btn" onclick="disconnect()">выйти</button>
-      </div>
-    </div>
-    <div style="margin-bottom:10px;"></div>
-    <div id="mlist" class="market-list"><div class="loading"><div class="spinner"></div><div>загрузка...</div></div></div>
-    <div class="bet-panel" id="bpanel">
-      <div class="panel-title" id="ptitle">—</div>
-      <div class="side-row">
-        <button class="side-btn yes" id="byes" onclick="setSide('BUY')">YES</button>
-        <button class="side-btn no" id="bno" onclick="setSide('SELL')">NO</button>
-      </div>
-      <div class="amount-label">сумма (USDC)</div>
-      <div class="quick-amounts">
-        <button class="quick-btn" onclick="setQ(1)">$1</button>
-        <button class="quick-btn" onclick="setQ(5)">$5</button>
-        <button class="quick-btn" onclick="setQ(10)">$10</button>
-        <button class="quick-btn" onclick="setQ(25)">$25</button>
-      </div>
-      <div class="amount-input-wrap">
-        <span class="currency-sign">$</span>
-        <input type="number" class="amount-input" id="amt" placeholder="0" min="1" inputmode="decimal" oninput="onAmt(this.value)">
-        <button class="clear-btn" onclick="clearAmt()">×</button>
-      </div>
-      <div class="info-box">
-        <div class="info-row"><span class="lbl">цена</span><span class="val" id="ipr">—</span></div>
-        <div class="info-row"><span class="lbl">акций</span><span class="val" id="ish">—</span></div>
-        <div class="info-divider"></div>
-        <div class="info-row payout"><span class="lbl">выигрыш</span><span class="val" id="ipa">—</span></div>
-      </div>
-      <button class="bet-btn" id="bbtn" onclick="placeBet()">⚡ разместить ставку</button>
-    </div>
-    <div id="logsec" style="display:none;margin-bottom:30px;">
-      <div class="section-label">история</div>
-      <div class="log-list" id="llist"></div>
-    </div>
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title">Polybot</div>
+    <div class="login-sub">Введи API ключи для входа</div>
+    <div class="field"><label>WALLET ADDRESS</label><input id="inp-addr" type="text" placeholder="0xae21..."></div>
+    <div class="field"><label>API KEY</label><input id="inp-key" type="text" placeholder="019e1266-..."></div>
+    <div class="field"><label>SECRET</label><input id="inp-secret" type="password" placeholder="••••••••"></div>
+    <div class="field"><label>PASSPHRASE</label><input id="inp-pass" type="password" placeholder="••••••••"></div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Войти</button>
+    <div class="error-msg" id="login-err"></div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div id="bot-screen">
+  <div class="top-bar">
+    <h1>Polybot</h1>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="balance-chip mono" id="balance-chip">$—</div>
+      <button class="logout-btn" onclick="doLogout()">выйти</button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="search-input" placeholder="Поиск рынков..." oninput="filterMarkets()">
+  </div>
+  <div id="markets-list" class="markets-list">
+    <div class="loading"><span class="spinner"></span>Загрузка рынков...</div>
+  </div>
+  <div id="bet-panel">
+    <div class="bet-title">СТАВКА</div>
+    <div class="bet-market-name" id="bet-market-name"></div>
+    <div class="yn-buttons">
+      <button class="btn-yes" id="btn-yes" onclick="selectSide('YES')">YES <span id="yes-price"></span></button>
+      <button class="btn-no"  id="btn-no"  onclick="selectSide('NO')">NO <span id="no-price"></span></button>
+    </div>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="setAmount(1)">$1</button>
+      <button class="quick-btn" onclick="setAmount(5)">$5</button>
+      <button class="quick-btn" onclick="setAmount(10)">$10</button>
+      <button class="quick-btn" onclick="setAmount(25)">$25</button>
+    </div>
+    <div class="amount-row">
+      <input class="amount-input" id="amount-input" type="number" min="1" placeholder="Сумма $">
+    </div>
+    <button class="btn-bet" id="btn-bet" onclick="placeBet()" disabled>Выбери YES или NO</button>
+  </div>
+  <div class="section-label">История</div>
+  <div class="history-list" id="history-list"></div>
+</div>
 
 <script>
-// ЗАМЕНИТЕ НА ВАШ VERCEL URL ПОСЛЕ ДЕПЛОЯ
 const PROXY = 'https://polymar-nine.vercel.app';
+let creds = null;
+let allMarkets = [];
+let selectedMarket = null;
+let selectedSide = null;
+let betHistory = [];
 
-let apiCreds = null, funderAddr = null;
-let selMkt = null, selSide = null, curAmt = 0, bets = 0;
-const SK = 'polybot_creds_v2';
-
-function toast(msg, type='ok', ms=2800) {
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className='toast show '+type;
-  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms);
+function loadCreds() {
+  try { const s = localStorage.getItem('poly_creds'); if (s) return JSON.parse(s); } catch(e) {}
+  return null;
 }
-function setStatus(txt, color) {
-  document.getElementById('stxt').textContent=txt;
-  document.getElementById('sdot').className='dot '+(color||'');
-}
+function saveCreds(c) { localStorage.setItem('poly_creds', JSON.stringify(c)); }
 
-async function hmac(secret, msg) {
-  const enc=new TextEncoder();
-  const key=await crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-  const sig=await crypto.subtle.sign('HMAC',key,enc.encode(msg));
-  return btoa(String.fromCharCode(...new Uint8Array(sig)));
-}
-
-async function l2Headers(method, path, body='') {
-  const ts=Math.floor(Date.now()/1000).toString();
-  const sig=await hmac(apiCreds.secret, ts+method.toUpperCase()+'/'+path+body);
-  return {
-    'POLY_ADDRESS': funderAddr,
-    'POLY_API_KEY': apiCreds.apiKey,
-    'POLY_SIGNATURE': sig,
-    'POLY_TIMESTAMP': ts,
-    'POLY_PASSPHRASE': apiCreds.passphrase,
-    'Content-Type': 'application/json'
-  };
+async function doLogin() {
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+  const address    = document.getElementById('inp-addr').value.trim();
+  const apiKey     = document.getElementById('inp-key').value.trim();
+  const secret     = document.getElementById('inp-secret').value.trim();
+  const passphrase = document.getElementById('inp-pass').value.trim();
+  if (!address || !apiKey || !secret || !passphrase) { showError('Заполни все поля'); return; }
+  btn.disabled = true; btn.textContent = 'Проверяю...';
+  const testCreds = { address, apiKey, secret, passphrase };
+  const ok = await testAuth(testCreds);
+  if (ok) {
+    creds = testCreds; saveCreds(creds); showBot();
+  } else {
+    showError('Ошибка авторизации. Проверь ключи.');
+    btn.disabled = false; btn.textContent = 'Войти';
+  }
 }
 
-async function clobFetch(method, path, body=null) {
-  const h = await l2Headers(method, path, body||'');
-  const opts = { method, headers: h };
-  if (body) opts.body = body;
-  return fetch(`${PROXY}/api/proxy?path=${encodeURIComponent(path)}`, opts);
-}
-
-async function connect() {
-  const apikey=document.getElementById('apikey').value.trim();
-  const secret=document.getElementById('secret').value.trim();
-  const passphrase=document.getElementById('passphrase').value.trim();
-  const address=document.getElementById('address').value.trim();
-
-  if (!apikey){toast('Введите API Key','err');return;}
-  if (!secret){toast('Введите Secret','err');return;}
-  if (!passphrase){toast('Введите Passphrase','err');return;}
-  if (!address||!address.startsWith('0x')||address.length!==42){toast('Введите адрес кошелька','err');return;}
-
-  const btn=document.getElementById('conn-btn');
-  btn.disabled=true; btn.textContent='проверка...';
-  setStatus('подключение...','yellow');
-
+async function testAuth(c) {
   try {
-    apiCreds={apiKey:apikey, secret, passphrase};
-    funderAddr=address;
+    const res = await proxyGet('balance', c);
+    return res.status !== 401 && res.status !== 403;
+  } catch(e) { return false; }
+}
 
-    const r=await clobFetch('GET','balance');
-    const d=await r.json();
-    if(!r.ok) throw new Error(d.error||'Неверные ключи: '+r.status);
+function doLogout() {
+  localStorage.removeItem('poly_creds');
+  creds = null;
+  document.getElementById('bot-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
 
-    const bal=parseFloat(d.balance||d.availableBalance||0).toFixed(2);
+function showError(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg; el.style.display = 'block';
+}
 
-    if(document.getElementById('remember').checked){
-      try{localStorage.setItem(SK,JSON.stringify({apikey,secret,passphrase,address}));}catch(e){}
+async function proxyGet(path, c = creds) {
+  const params = new URLSearchParams({ path, apiKey: c.apiKey, secret: c.secret, passphrase: c.passphrase, address: c.address });
+  return fetch(`${PROXY}/api/proxy?${params}`);
+}
+
+async function proxyPost(path, body, c = creds) {
+  return fetch(`${PROXY}/api/proxy?path=${encodeURIComponent(path)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ _creds: c, ...body })
+  });
+}
+
+async function showBot() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('bot-screen').style.display = 'block';
+  loadHistory(); loadBalance(); loadMarkets();
+}
+
+async function loadBalance() {
+  try {
+    const res = await proxyGet('balance');
+    if (res.ok) {
+      const d = await res.json();
+      const amt = d.balance ?? d.availableBalance ?? '?';
+      document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
     }
+  } catch(e) {}
+}
 
-    setStatus('живой','green');
-    document.getElementById('setup').style.display='none';
-    document.getElementById('main').style.display='block';
-    document.getElementById('bal').textContent='$'+bal;
-    document.getElementById('wallet-info').innerHTML='✓ <span>'+address.slice(0,6)+'...'+address.slice(-4)+'</span>';
-    await loadMarkets();
-    toast('✓ подключено! Баланс: $'+bal,'ok');
-
-  } catch(e){
-    console.error(e);
-    toast('✗ '+(e.message||'ошибка').slice(0,60),'err',5000);
-    setStatus('ошибка','');
-    btn.disabled=false; btn.textContent='⚡ Войти';
+async function loadMarkets() {
+  try {
+    const res = await fetch(`${PROXY}/api/markets`);
+    const data = await res.json();
+    allMarkets = data.results || data || [];
+    renderMarkets(allMarkets);
+  } catch(e) {
+    document.getElementById('markets-list').innerHTML = '<div class="loading" style="color:var(--red)">Ошибка загрузки рынков</div>';
   }
 }
 
-function disconnect(){
-  apiCreds=null;funderAddr=null;selMkt=null;selSide=null;curAmt=0;
-  try{localStorage.removeItem(SK);}catch(e){}
-  document.getElementById('setup').style.display='block';
-  document.getElementById('main').style.display='none';
-  ['apikey','secret','passphrase','address'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('conn-btn').disabled=false;
-  document.getElementById('conn-btn').textContent='⚡ Войти';
-  setStatus('не подключён','');
+function renderMarkets(list) {
+  const el = document.getElementById('markets-list');
+  if (!list.length) { el.innerHTML = '<div class="loading">Рынки не найдены</div>'; return; }
+  el.innerHTML = list.slice(0, 30).map(m => {
+    const tokens = m.tokens || [];
+    const yes = tokens.find(t => t.outcome === 'Yes') || tokens[0] || {};
+    const no  = tokens.find(t => t.outcome === 'No')  || tokens[1] || {};
+    return `<div class="market-card" onclick="selectMarket('${m.condition_id}', this)">
+      <div class="market-q">${m.question}</div>
+      <div class="market-prices">
+        <span class="price-yes">YES ${yes.price ? (yes.price*100).toFixed(0)+'¢' : '—'}</span>
+        <span class="price-no">NO ${no.price ? (no.price*100).toFixed(0)+'¢' : '—'}</span>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-async function loadMarkets(){
-  const ml=document.getElementById('mlist');
-  ml.innerHTML='<div class="loading"><div class="spinner"></div><div>загрузка рынков...</div></div>';
-  try{
-    const r=await fetch(`${PROXY}/api/markets?active=true&closed=false&limit=20&order=volume24hr&ascending=false`);
-    const ms=await r.json();
-    ml.innerHTML='';
-    ms.slice(0,10).forEach(m=>{
-      const prices=m.outcomePrices?JSON.parse(m.outcomePrices):[0.5,0.5];
-      const tids=m.clobTokenIds?JSON.parse(m.clobTokenIds):[];
-      const yp=parseFloat(prices[0]);const np=parseFloat(prices[1]);
-      const el=document.createElement('div');el.className='market-item';
-      el.innerHTML=`<div class="market-vol">vol: $${Number(m.volume24hr||0).toLocaleString('en',{maximumFractionDigits:0})}</div><div class="market-title">${m.question}</div><div class="odds-row"><span class="odd-badge odd-yes">YES ${Math.round(yp*100)}¢</span><span class="odd-badge odd-no">NO ${Math.round(np*100)}¢</span></div>`;
-      el.onclick=()=>selectM({title:m.question,yp,np,yTid:tids[0]||'',nTid:tids[1]||''},el);
-      ml.appendChild(el);
-    });
-  }catch(e){
-    ml.innerHTML='<div class="loading" style="color:var(--red)">Ошибка. Нажмите ↻</div>';
-  }
+function filterMarkets() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  renderMarkets(allMarkets.filter(m => m.question.toLowerCase().includes(q)));
 }
 
-function selectM(m,el){
-  document.querySelectorAll('.market-item').forEach(c=>c.classList.remove('selected'));
-  el.classList.add('selected');selMkt=m;selSide=null;
-  document.getElementById('byes').classList.remove('active');
-  document.getElementById('bno').classList.remove('active');
-  document.getElementById('ptitle').textContent=m.title;
-  document.getElementById('bpanel').classList.add('visible');
-  updInfo();
-  setTimeout(()=>document.getElementById('bpanel').scrollIntoView({behavior:'smooth',block:'nearest'}),100);
-}
-function setSide(s){selSide=s;document.getElementById('byes').classList.toggle('active',s==='BUY');document.getElementById('bno').classList.toggle('active',s==='SELL');updInfo();}
-function setQ(v){curAmt=v;document.getElementById('amt').value=v;document.querySelectorAll('.quick-btn').forEach(b=>b.classList.toggle('active',parseInt(b.textContent.replace('$',''))===v));updInfo();}
-function onAmt(v){curAmt=parseFloat(v)||0;document.querySelectorAll('.quick-btn').forEach(b=>b.classList.toggle('active',parseInt(b.textContent.replace('$',''))===curAmt));updInfo();}
-function clearAmt(){curAmt=0;document.getElementById('amt').value='';document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('active'));updInfo();}
-function updInfo(){
-  if(!selMkt||!selSide||!curAmt){['ipr','ish','ipa'].forEach(id=>document.getElementById(id).textContent='—');return;}
-  const p=selSide==='BUY'?selMkt.yp:selMkt.np;
-  document.getElementById('ipr').textContent=Math.round(p*100)+'¢';
-  document.getElementById('ish').textContent=(curAmt/p).toFixed(2);
-  document.getElementById('ipa').textContent='$'+(curAmt/p).toFixed(2);
+function selectMarket(condId, el) {
+  document.querySelectorAll('.market-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedMarket = allMarkets.find(m => m.condition_id === condId);
+  selectedSide = null;
+  const tokens = selectedMarket.tokens || [];
+  const yes = tokens.find(t => t.outcome === 'Yes') || tokens[0] || {};
+  const no  = tokens.find(t => t.outcome === 'No')  || tokens[1] || {};
+  document.getElementById('bet-market-name').textContent = selectedMarket.question;
+  document.getElementById('yes-price').textContent = yes.price ? (yes.price*100).toFixed(0)+'¢' : '';
+  document.getElementById('no-price').textContent  = no.price  ? (no.price*100).toFixed(0)+'¢' : '';
+  document.getElementById('btn-yes').classList.remove('selected');
+  document.getElementById('btn-no').classList.remove('selected');
+  document.getElementById('btn-bet').disabled = true;
+  document.getElementById('btn-bet').textContent = 'Выбери YES или NO';
+  document.getElementById('btn-bet').className = 'btn-bet';
+  document.getElementById('bet-panel').style.display = 'block';
+  document.getElementById('bet-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-async function placeBet(){
-  if(!selMkt){toast('Выберите рынок','err');return;}
-  if(!selSide){toast('Выберите YES или NO','err');return;}
-  if(!curAmt||curAmt<=0){toast('Введите сумму','err');return;}
-  const btn=document.getElementById('bbtn');
-  const t0=performance.now();
-  btn.disabled=true;btn.textContent='⚡ отправка...';
-  const tokenId=selSide==='BUY'?selMkt.yTid:selMkt.nTid;
-  const price=selSide==='BUY'?selMkt.yp:selMkt.np;
-  const size=parseFloat((curAmt/price).toFixed(4));
-  try{
-    const salt=String(Math.floor(Math.random()*1e15));
-    const orderStruct={
-      salt,maker:funderAddr,signer:funderAddr,
-      taker:'0x0000000000000000000000000000000000000000',
-      tokenId,
-      makerAmount:String(Math.round(curAmt*1e6)),
-      takerAmount:String(Math.round(size*1e6)),
-      expiration:'0',nonce:'0',feeRateBps:'0',
-      side:selSide==='BUY'?0:1,
-      signatureType:0
+function selectSide(side) {
+  selectedSide = side;
+  document.getElementById('btn-yes').classList.toggle('selected', side === 'YES');
+  document.getElementById('btn-no').classList.toggle('selected', side === 'NO');
+  const btn = document.getElementById('btn-bet');
+  btn.disabled = false;
+  btn.textContent = `Поставить ${side}`;
+  btn.className = 'btn-bet ' + side.toLowerCase();
+}
+
+function setAmount(v) { document.getElementById('amount-input').value = v; }
+
+async function placeBet() {
+  if (!selectedMarket || !selectedSide) return;
+  const amount = parseFloat(document.getElementById('amount-input').value);
+  if (!amount || amount <= 0) { alert('Введи сумму'); return; }
+  const btn = document.getElementById('btn-bet');
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = 'Отправляю...';
+  const t0 = Date.now();
+  try {
+    const tokens = selectedMarket.tokens || [];
+    const token = tokens.find(t => selectedSide === 'YES' ? t.outcome === 'Yes' : t.outcome === 'No') || (selectedSide === 'YES' ? tokens[0] : tokens[1]);
+    const price = token?.price || 0.5;
+    const size  = (amount / price).toFixed(2);
+    const orderBody = {
+      order: {
+        tokenId: token?.token_id,
+        price: price,
+        size: parseFloat(size),
+        side: 'BUY',
+        type: 'MARKET',
+        timeInForce: 'FOK'
+      }
     };
-    const body=JSON.stringify({order:{...orderStruct,signature:'0x'},owner:funderAddr,orderType:'FOK'});
-    const resp=await clobFetch('POST','order',body);
-    const res=await resp.json();
-    const delay=Math.round(performance.now()-t0);
-    if(resp.ok&&(res.success||res.orderID||res.id||res.orderId)){
-      bets++;document.getElementById('bcnt').textContent=bets;
-      btn.classList.add('success');btn.textContent='✓ '+delay+'ms';
-      toast('✓ ставка принята · '+delay+'ms','ok');
-      addLog(true,delay,res.orderID||res.id||'');
-      setTimeout(async()=>{
-        const r2=await clobFetch('GET','balance');
-        const d2=await r2.json();
-        document.getElementById('bal').textContent='$'+parseFloat(d2.balance||0).toFixed(2);
-      },1500);
-    }else throw new Error(res.error||res.message||JSON.stringify(res).slice(0,80));
-  }catch(e){
-    const delay=Math.round(performance.now()-t0);
-    btn.classList.add('fail');btn.textContent='✗ ошибка';
-    toast('✗ '+(e.message||'ошибка').slice(0,50),'err',5000);
-    addLog(false,delay,e.message||'');console.error(e);
-  }
-  setTimeout(()=>{btn.className='bet-btn';btn.textContent='⚡ разместить ставку';btn.disabled=false;},2500);
-}
-
-function addLog(ok,delay,detail){
-  document.getElementById('logsec').style.display='block';
-  const ll=document.getElementById('llist');
-  const el=document.createElement('div');el.className='log-item';
-  const side=selSide==='BUY'?'YES':'NO';
-  el.innerHTML=`<div class="log-top"><span class="log-badge ${ok?(selSide==='BUY'?'yes':'no'):'fail'}">${ok?side:'FAIL'} · $${curAmt}</span><span class="log-time">${new Date().toLocaleTimeString('ru')}</span></div><div class="log-market">${selMkt.title}</div><div class="log-detail ${ok?'ok':'err'}">${ok?'✓ принято · '+delay+'ms':'✗ '+(detail||'').slice(0,50)}</div>`;
-  ll.insertBefore(el,ll.firstChild);
-}
-
-window.addEventListener('load',()=>{
-  try{
-    const saved=localStorage.getItem(SK);
-    if(saved){
-      const c=JSON.parse(saved);
-      document.getElementById('apikey').value=c.apikey||'';
-      document.getElementById('secret').value=c.secret||'';
-      document.getElementById('passphrase').value=c.passphrase||'';
-      document.getElementById('address').value=c.address||'';
-      if(c.apikey&&c.secret&&c.passphrase&&c.address) connect();
+    const res = await proxyPost('order', orderBody);
+    const ms = Date.now() - t0;
+    const data = await res.json();
+    if (res.ok && !data.error) {
+      addHistory(selectedMarket.question, selectedSide, amount, ms, 'ok');
+      loadBalance();
+      btn.textContent = `✓ Принято (${ms}ms)`;
+      setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 2000);
+    } else {
+      addHistory(selectedMarket.question, selectedSide, amount, ms, 'err');
+      btn.textContent = `✗ ${data.error || 'Ошибка'}`;
+      setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3000);
     }
-  }catch(e){}
-});
+  } catch(e) {
+    btn.textContent = '✗ Сеть';
+    btn.disabled = false;
+  }
+}
+
+function addHistory(question, side, amount, ms, status) {
+  betHistory.unshift({ question, side, amount, ms, status, time: new Date().toLocaleTimeString() });
+  localStorage.setItem('poly_history', JSON.stringify(betHistory.slice(0, 50)));
+  renderHistory();
+}
+
+function loadHistory() {
+  try { betHistory = JSON.parse(localStorage.getItem('poly_history') || '[]'); } catch(e) { betHistory = []; }
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (!betHistory.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">Пока пусто</div>'; return; }
+  el.innerHTML = betHistory.slice(0, 20).map(h =>
+    `<div class="hist-item">
+      <div class="hist-left">
+        <div class="hist-q">${h.question.slice(0,60)}${h.question.length>60?'…':''}</div>
+        <div class="hist-meta">${h.time} · $${h.amount} · ${h.ms}ms · ${h.status === 'ok' ? '✓' : '✗'}</div>
+      </div>
+      <span class="hist-badge ${h.side.toLowerCase()}">${h.side}</span>
+    </div>`
+  ).join('');
+}
+
+(function init() {
+  const saved = loadCreds();
+  if (saved) {
+    creds = saved;
+    document.getElementById('inp-addr').value   = saved.address    || '';
+    document.getElementById('inp-key').value    = saved.apiKey     || '';
+    document.getElementById('inp-secret').value = saved.secret     || '';
+    document.getElementById('inp-pass').value   = saved.passphrase || '';
+    showBot();
+  }
+})();
 </script>
 </body>
 </html>
