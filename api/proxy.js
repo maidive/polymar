@@ -11,11 +11,17 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { path } = req.query;
+  const { path, api } = req.query;
   if (!path) return res.status(400).json({ error: 'No path provided' });
 
   const decodedPath = decodeURIComponent(Array.isArray(path) ? path.join('/') : path);
-  const url = 'https://clob.polymarket.com/' + decodedPath;
+  
+  // api=data uses Data API, default is CLOB API
+  const baseUrl = api === 'data' 
+    ? 'https://data-api.polymarket.com/' 
+    : 'https://clob.polymarket.com/';
+  
+  const url = baseUrl + decodedPath;
 
   let credentials = null;
   let bodyToForward = undefined;
