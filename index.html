@@ -259,10 +259,10 @@ async function showBot() {
 
 async function loadBalance() {
   try {
-    const res = await proxyGet('balance');
+    const res = await fetch(`https://data-api.polymarket.com/value?user=${creds.address}`);
     if (res.ok) {
       const d = await res.json();
-      const amt = d.balance ?? d.availableBalance ?? '?';
+      const amt = d[0]?.value ?? 0;
       document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
     }
   } catch(e) {}
