@@ -282,7 +282,7 @@ async function loadBalance() {
     const res = await fetch(`${PROXY}/api/proxy?path=${encodeURIComponent('value?user=' + creds.address)}&api=data`);
     if (res.ok) {
       const d = await res.json();
-      const amt = Array.isArray(d) ? (d[0]?.value ?? 0) : (d?.value ?? 0);
+      const amt = d?.value?.[0]?.value ?? d?.[0]?.value ?? 0;
       document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
     }
   } catch(e) {}
@@ -299,19 +299,28 @@ async function loadMarkets() {
   }
 }
 
+function parseMarket(m) {
+  const prices    = JSON.parse(m.outcomePrices || '["0.5","0.5"]');
+  const tokenIds  = JSON.parse(m.clobTokenIds  || '["",""]');
+  return {
+    yesPrice: parseFloat(prices[0]),
+    noPrice:  parseFloat(prices[1]),
+    yesTokenId: tokenIds[0],
+    noTokenId:  tokenIds[1],
+  };
+}
+
 function renderMarkets(list, isSearch = false) {
   const el = document.getElementById('markets-list');
   if (!list.length) { el.innerHTML = '<div class="loading">Рынки не найдены</div>'; return; }
   const shown = isSearch ? list : list.slice(0, 50);
   el.innerHTML = shown.map(m => {
-    const tokens = m.tokens || [];
-    const yes = tokens.find(t => t.outcome === 'Yes') || tokens[0] || {};
-    const no  = tokens.find(t => t.outcome === 'No')  || tokens[1] || {};
-    return `<div class="market-card" onclick="selectMarket('${m.condition_id}', this)">
+    const { yesPrice, noPrice } = parseMarket(m);
+    return `<div class="market-card" onclick="selectMarket('${m.conditionId}', this)">
       <div class="market-q">${m.question}</div>
       <div class="market-prices">
-        <span class="price-yes">YES ${yes.price ? (yes.price*100).toFixed(0)+'¢' : '—'}</span>
-        <span class="price-no">NO ${no.price ? (no.price*100).toFixed(0)+'¢' : '—'}</span>
+        <span class="price-yes">YES ${(yesPrice*100).toFixed(0)}¢</span>
+        <span class="price-no">NO ${(noPrice*100).toFixed(0)}¢</span>
       </div>
     </div>`;
   }).join('');
@@ -326,14 +335,12 @@ function filterMarkets() {
 function selectMarket(condId, el) {
   document.querySelectorAll('.market-card').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  selectedMarket = allMarkets.find(m => m.condition_id === condId);
+  selectedMarket = allMarkets.find(m => m.conditionId === condId);
   selectedSide = null;
-  const tokens = selectedMarket.tokens || [];
-  const yes = tokens.find(t => t.outcome === 'Yes') || tokens[0] || {};
-  const no  = tokens.find(t => t.outcome === 'No')  || tokens[1] || {};
+  const { yesPrice, noPrice } = parseMarket(selectedMarket);
   document.getElementById('bet-market-name').textContent = selectedMarket.question;
-  document.getElementById('yes-price').textContent = yes.price ? (yes.price*100).toFixed(0)+'¢' : '';
-  document.getElementById('no-price').textContent  = no.price  ? (no.price*100).toFixed(0)+'¢' : '';
+  document.getElementById('yes-price').textContent = (yesPrice*100).toFixed(0)+'¢';
+  document.getElementById('no-price').textContent  = (noPrice*100).toFixed(0)+'¢';
   document.getElementById('btn-yes').classList.remove('selected');
   document.getElementById('btn-no').classList.remove('selected');
   document.getElementById('btn-bet').disabled = true;
@@ -365,14 +372,14 @@ async function placeBet() {
   btn.textContent = 'Отправляю...';
   const t0 = Date.now();
   try {
-    const tokens = selectedMarket.tokens || [];
-    const token = tokens.find(t => selectedSide === 'YES' ? t.outcome === 'Yes' : t.outcome === 'No') || (selectedSide === 'YES' ? tokens[0] : tokens[1]);
-    const price = token?.price || 0.5;
-    const size  = (amount / price).toFixed(2);
+    const { yesPrice, noPrice, yesTokenId, noTokenId } = parseMarket(selectedMarket);
+    const price   = selectedSide === 'YES' ? yesPrice : noPrice;
+    const tokenId = selectedSide === 'YES' ? yesTokenId : noTokenId;
+    const size    = (amount / price).toFixed(2);
     const orderBody = {
       order: {
-        tokenId: token?.token_id,
-        price: price,
+        tokenId,
+        price,
         size: parseFloat(size),
         side: 'BUY',
         type: 'MARKET',
