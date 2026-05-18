@@ -279,13 +279,12 @@ async function showBot() {
 
 async function loadBalance() {
   try {
-    const res = await fetch(`https://data-api.polymarket.com/value?user=${creds.address}`);
+    const path = encodeURIComponent('value?user=' + creds.address);
+    const res = await fetch(`${PROXY}/api/proxy?path=${path}&api=data`);
     if (!res.ok) return;
     const d = await res.json();
-    let amt = 0;
-    if (Array.isArray(d))               amt = d[0]?.value ?? 0;
-    else if (typeof d?.value === 'number') amt = d.value;
-    else if (Array.isArray(d?.value))    amt = d.value[0]?.value ?? 0;
+    // data-api returns [{user, value}] array
+    const amt = Array.isArray(d) ? (d[0]?.value ?? 0) : (d?.value ?? 0);
     document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
   } catch(e) {}
 }
