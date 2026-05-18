@@ -48,6 +48,19 @@
   .btn-primary:hover { opacity: .85; }
   .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
   .error-msg { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; display: none; }
+  .btn-metamask {
+    width: 100%; background: #f6851b; color: #fff; border: none;
+    border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity .15s; display: flex; align-items: center;
+    justify-content: center; gap: 8px;
+  }
+  .btn-metamask:hover { opacity: .88; }
+  .btn-metamask:disabled { opacity: .4; cursor: not-allowed; }
+  .divider {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--muted); font-size: 12px; margin: 18px 0;
+  }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
   #bot-screen { display: none; padding: 16px; max-width: 480px; margin: 0 auto; }
   .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-top: 8px; }
@@ -138,9 +151,11 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="login-title">Polybot</div>
-    <div class="login-sub">Polymarket → Профиль → API-ключи релеера</div>
+    <div class="login-sub">Торговый бот для Polymarket</div>
+    <button class="btn-metamask" id="metamask-btn" onclick="loginMetaMask()">🦊 Войти через MetaMask</button>
+    <div class="divider">или вручную</div>
     <div class="field"><label>WALLET ADDRESS</label><input id="inp-addr" type="text" placeholder="0x3d1e..."></div>
-    <div class="field"><label>API KEY</label><input id="inp-key" type="text" placeholder="019e3d6a-..."></div>
+    <div class="field"><label>API KEY (Relayer)</label><input id="inp-key" type="text" placeholder="019e3d6a-..."></div>
     <button class="btn-primary" id="login-btn" onclick="doLogin()">Войти</button>
     <div class="error-msg" id="login-err"></div>
   </div>
@@ -199,27 +214,74 @@ function saveCreds(c) { localStorage.setItem('poly_creds', JSON.stringify(c)); }
 
 async function doLogin() {
   const btn = document.getElementById('login-btn');
-  const errEl = document.getElementById('login-err');
-  errEl.style.display = 'none';
+  document.getElementById('login-err').style.display = 'none';
   const address = document.getElementById('inp-addr').value.trim();
   const apiKey  = document.getElementById('inp-key').value.trim();
   if (!address || !apiKey) { showError('Заполни все поля'); return; }
+  if (!address.startsWith('0x') || address.length < 40) { showError('Неверный формат адреса'); return; }
+  if (apiKey.length < 8) { showError('Неверный формат API ключа'); return; }
   btn.disabled = true; btn.textContent = 'Проверяю...';
-  const testCreds = { address, apiKey };
-  const ok = await testAuth(testCreds);
-  if (ok) {
-    creds = testCreds; saveCreds(creds); showBot();
-  } else {
-    showError('Ошибка авторизации. Проверь ключи.');
-    btn.disabled = false; btn.textContent = 'Войти';
-  }
+  creds = { address, apiKey };
+  saveCreds(creds);
+  showBot();
+  btn.disabled = false; btn.textContent = 'Войти';
 }
 
-async function testAuth(c) {
+async function loginMetaMask() {
+  if (!window.ethereum) { showError('MetaMask не найден. Установи расширение.'); return; }
+  const btn = document.getElementById('metamask-btn');
+  const errReset = () => { btn.disabled = false; btn.innerHTML = '🦊 Войти через MetaMask'; };
+  document.getElementById('login-err').style.display = 'none';
+  btn.disabled = true; btn.textContent = '🦊 Подключаю...';
   try {
-    const res = await proxyGet('balance', c);
-    return res.status !== 401 && res.status !== 403;
-  } catch(e) { return false; }
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const address  = accounts[0].toLowerCase();
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = 0;
+
+    const typedData = JSON.stringify({
+      domain: { name: 'ClobAuthDomain', version: '1', chainId: '137' },
+      types: {
+        EIP712Domain: [
+          { name: 'name',    type: 'string'  },
+          { name: 'version', type: 'string'  },
+          { name: 'chainId', type: 'uint256' }
+        ],
+        ClobAuthMsg: [
+          { name: 'address',   type: 'address' },
+          { name: 'timestamp', type: 'string'  },
+          { name: 'nonce',     type: 'uint256' }
+        ]
+      },
+      primaryType: 'ClobAuthMsg',
+      message: { address, timestamp, nonce }
+    });
+
+    btn.textContent = '🦊 Подпиши в MetaMask...';
+    const signature = await window.ethereum.request({
+      method: 'eth_signTypedData_v4',
+      params: [address, typedData]
+    });
+
+    btn.textContent = '🦊 Получаю ключи...';
+    const params = new URLSearchParams({
+      path: 'auth/api-key',
+      address,
+      l1sig: signature,
+      l1ts: timestamp,
+      l1nonce: nonce.toString()
+    });
+    const res = await fetch(`${PROXY}/api/proxy?${params}`, { method: 'POST' });
+    const keys = await res.json().catch(() => ({}));
+    if (!res.ok || !keys.apiKey) throw new Error(keys.error || `HTTP ${res.status}`);
+
+    creds = { address, apiKey: keys.apiKey, secret: keys.secret, passphrase: keys.passphrase };
+    saveCreds(creds);
+    showBot();
+  } catch(e) {
+    showError(e.code === 4001 ? 'Отклонено пользователем' : 'Ошибка: ' + e.message);
+    errReset();
+  }
 }
 
 function doLogout() {
@@ -236,6 +298,8 @@ function showError(msg) {
 
 async function proxyGet(path, c = creds) {
   const params = new URLSearchParams({ path, apiKey: c.apiKey, address: c.address });
+  if (c.secret)     params.set('secret',     c.secret);
+  if (c.passphrase) params.set('passphrase', c.passphrase);
   return fetch(`${PROXY}/api/proxy?${params}`);
 }
 
@@ -259,7 +323,11 @@ async function hmacBrowser(secret, message) {
 }
 
 async function directOrder(body) {
-  const bodyStr = JSON.stringify(body);
+  if (creds.secret) {
+    // HMAC-signed via proxy (full CLOB auth)
+    return proxyPost('order', body);
+  }
+  // Relayer API fallback (no HMAC needed)
   return fetch('https://clob.polymarket.com/order', {
     method: 'POST',
     headers: {
@@ -267,7 +335,7 @@ async function directOrder(body) {
       'RELAYER_API_KEY':         creds.apiKey,
       'RELAYER_API_KEY_ADDRESS': creds.address,
     },
-    body: bodyStr
+    body: JSON.stringify(body)
   });
 }
 
@@ -279,13 +347,22 @@ async function showBot() {
 
 async function loadBalance() {
   try {
-    const path = encodeURIComponent('value?user=' + creds.address);
-    const res = await fetch(`${PROXY}/api/proxy?path=${path}&api=data`);
-    if (!res.ok) return;
-    const d = await res.json();
-    // data-api returns [{user, value}] array
-    const amt = Array.isArray(d) ? (d[0]?.value ?? 0) : (d?.value ?? 0);
-    document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
+    if (creds.secret) {
+      // Authenticated CLOB balance (real USDC cash)
+      const res = await proxyGet('balance');
+      if (!res.ok) return;
+      const d = await res.json();
+      const amt = d.balance ?? d.USDC ?? d.value ?? 0;
+      document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
+    } else {
+      // Portfolio positions value via data-api (may show 0 for empty positions)
+      const path = encodeURIComponent('value?user=' + creds.address);
+      const res = await fetch(`${PROXY}/api/proxy?path=${path}&api=data`);
+      if (!res.ok) return;
+      const d = await res.json();
+      const amt = Array.isArray(d) ? (d[0]?.value ?? 0) : (d?.value ?? 0);
+      document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
+    }
   } catch(e) {}
 }
 
