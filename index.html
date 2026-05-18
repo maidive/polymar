@@ -138,11 +138,9 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="login-title">Polybot</div>
-    <div class="login-sub">Введи API ключи для входа</div>
-    <div class="field"><label>WALLET ADDRESS</label><input id="inp-addr" type="text" placeholder="0xae21..."></div>
-    <div class="field"><label>API KEY</label><input id="inp-key" type="text" placeholder="019e1266-..."></div>
-    <div class="field"><label>SECRET</label><input id="inp-secret" type="password" placeholder="••••••••"></div>
-    <div class="field"><label>PASSPHRASE</label><input id="inp-pass" type="password" placeholder="••••••••"></div>
+    <div class="login-sub">Polymarket → Профиль → API-ключи релеера</div>
+    <div class="field"><label>WALLET ADDRESS</label><input id="inp-addr" type="text" placeholder="0x3d1e..."></div>
+    <div class="field"><label>API KEY</label><input id="inp-key" type="text" placeholder="019e3d6a-..."></div>
     <button class="btn-primary" id="login-btn" onclick="doLogin()">Войти</button>
     <div class="error-msg" id="login-err"></div>
   </div>
@@ -203,13 +201,11 @@ async function doLogin() {
   const btn = document.getElementById('login-btn');
   const errEl = document.getElementById('login-err');
   errEl.style.display = 'none';
-  const address    = document.getElementById('inp-addr').value.trim();
-  const apiKey     = document.getElementById('inp-key').value.trim();
-  const secret     = document.getElementById('inp-secret').value.trim();
-  const passphrase = document.getElementById('inp-pass').value.trim();
-  if (!address || !apiKey || !secret || !passphrase) { showError('Заполни все поля'); return; }
+  const address = document.getElementById('inp-addr').value.trim();
+  const apiKey  = document.getElementById('inp-key').value.trim();
+  if (!address || !apiKey) { showError('Заполни все поля'); return; }
   btn.disabled = true; btn.textContent = 'Проверяю...';
-  const testCreds = { address, apiKey, secret, passphrase };
+  const testCreds = { address, apiKey };
   const ok = await testAuth(testCreds);
   if (ok) {
     creds = testCreds; saveCreds(creds); showBot();
@@ -239,7 +235,7 @@ function showError(msg) {
 }
 
 async function proxyGet(path, c = creds) {
-  const params = new URLSearchParams({ path, apiKey: c.apiKey, secret: c.secret, passphrase: c.passphrase, address: c.address });
+  const params = new URLSearchParams({ path, apiKey: c.apiKey, address: c.address });
   return fetch(`${PROXY}/api/proxy?${params}`);
 }
 
@@ -263,18 +259,13 @@ async function hmacBrowser(secret, message) {
 }
 
 async function directOrder(body) {
-  const ts = Math.floor(Date.now() / 1000).toString();
   const bodyStr = JSON.stringify(body);
-  const sig = await hmacBrowser(creds.secret, ts + 'POST' + '/order' + bodyStr);
   return fetch('https://clob.polymarket.com/order', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'POLY_ADDRESS':    creds.address,
-      'POLY_API_KEY':    creds.apiKey,
-      'POLY_SIGNATURE':  sig,
-      'POLY_TIMESTAMP':  ts,
-      'POLY_PASSPHRASE': creds.passphrase,
+      'Content-Type':           'application/json',
+      'RELAYER_API_KEY':         creds.apiKey,
+      'RELAYER_API_KEY_ADDRESS': creds.address,
     },
     body: bodyStr
   });
@@ -434,10 +425,8 @@ function renderHistory() {
   const saved = loadCreds();
   if (saved) {
     creds = saved;
-    document.getElementById('inp-addr').value   = saved.address    || '';
-    document.getElementById('inp-key').value    = saved.apiKey     || '';
-    document.getElementById('inp-secret').value = saved.secret     || '';
-    document.getElementById('inp-pass').value   = saved.passphrase || '';
+    document.getElementById('inp-addr').value = saved.address || '';
+    document.getElementById('inp-key').value  = saved.apiKey  || '';
     showBot();
   }
 })();
