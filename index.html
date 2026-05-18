@@ -279,10 +279,10 @@ async function showBot() {
 
 async function loadBalance() {
   try {
-    const res = await fetch(`https://data-api.polymarket.com/value?user=${creds.address}`);
+    const res = await fetch(`${PROXY}/api/proxy?path=${encodeURIComponent('value?user=' + creds.address)}&api=data`);
     if (res.ok) {
       const d = await res.json();
-      const amt = d[0]?.value ?? 0;
+      const amt = Array.isArray(d) ? (d[0]?.value ?? 0) : (d?.value ?? 0);
       document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
     }
   } catch(e) {}
@@ -299,10 +299,11 @@ async function loadMarkets() {
   }
 }
 
-function renderMarkets(list) {
+function renderMarkets(list, isSearch = false) {
   const el = document.getElementById('markets-list');
   if (!list.length) { el.innerHTML = '<div class="loading">Рынки не найдены</div>'; return; }
-  el.innerHTML = list.slice(0, 30).map(m => {
+  const shown = isSearch ? list : list.slice(0, 50);
+  el.innerHTML = shown.map(m => {
     const tokens = m.tokens || [];
     const yes = tokens.find(t => t.outcome === 'Yes') || tokens[0] || {};
     const no  = tokens.find(t => t.outcome === 'No')  || tokens[1] || {};
@@ -317,8 +318,9 @@ function renderMarkets(list) {
 }
 
 function filterMarkets() {
-  const q = document.getElementById('search-input').value.toLowerCase();
-  renderMarkets(allMarkets.filter(m => m.question.toLowerCase().includes(q)));
+  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  if (!q) { renderMarkets(allMarkets); return; }
+  renderMarkets(allMarkets.filter(m => m.question.toLowerCase().includes(q)), true);
 }
 
 function selectMarket(condId, el) {

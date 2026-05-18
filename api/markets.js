@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   try {
     const r = await fetch(
-      'https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=100'
+      'https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=500'
     );
     const data = await r.json();
     cache = data;
