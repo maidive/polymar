@@ -272,7 +272,7 @@ async function loadMarkets() {
   try {
     const res = await fetch(`${PROXY}/api/markets`);
     const data = await res.json();
-    allMarkets = data.results || data || [];
+    allMarkets = data.data || data.results || (Array.isArray(data) ? data : []);
     renderMarkets(allMarkets);
   } catch(e) {
     document.getElementById('markets-list').innerHTML = '<div class="loading" style="color:var(--red)">Ошибка загрузки рынков</div>';
