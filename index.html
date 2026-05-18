@@ -300,8 +300,8 @@ async function loadMarkets() {
 }
 
 function parseMarket(m) {
-  const prices    = JSON.parse(m.outcomePrices || '["0.5","0.5"]');
-  const tokenIds  = JSON.parse(m.clobTokenIds  || '["",""]');
+  const prices    = JSON.parse(m.outcomePrices  || '["0.5","0.5"]');
+  const tokenIds  = JSON.parse(m.clobTokenIds   || '["",""]');
   return {
     yesPrice: parseFloat(prices[0]),
     noPrice:  parseFloat(prices[1]),
