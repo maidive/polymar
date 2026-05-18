@@ -251,6 +251,35 @@ async function proxyPost(path, body, c = creds) {
   });
 }
 
+async function hmacBrowser(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+async function directOrder(body) {
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const bodyStr = JSON.stringify(body);
+  const sig = await hmacBrowser(creds.secret, ts + 'POST' + '/order' + bodyStr);
+  return fetch('https://clob.polymarket.com/order', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'POLY_ADDRESS':    creds.address,
+      'POLY_API_KEY':    creds.apiKey,
+      'POLY_SIGNATURE':  sig,
+      'POLY_TIMESTAMP':  ts,
+      'POLY_PASSPHRASE': creds.passphrase,
+    },
+    body: bodyStr
+  });
+}
+
 async function showBot() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('bot-screen').style.display = 'block';
@@ -357,7 +386,7 @@ async function placeBet() {
         timeInForce: 'FOK'
       }
     };
-    const res = await proxyPost('order', orderBody);
+    const res = await directOrder(orderBody);
     const ms = Date.now() - t0;
     const data = await res.json();
     if (res.ok && !data.error) {
