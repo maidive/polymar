@@ -14,12 +14,14 @@ export default async function handler(req, res) {
 
   try {
     const r = await fetch(
-      'https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=500'
+      'https://clob.polymarket.com/markets?active=true&closed=false&accepting_orders=true&limit=100'
     );
     const data = await r.json();
-    cache = data;
+    // CLOB returns { data: [...], next_cursor: "..." }
+    const markets = data.data || data;
+    cache = markets;
     cacheAt = Date.now();
-    return res.status(200).json(data);
+    return res.status(200).json(markets);
   } catch (e) {
     if (cache) return res.status(200).json(cache);
     return res.status(500).json({ error: e.message });
