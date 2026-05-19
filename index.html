@@ -167,7 +167,7 @@
   <div class="top-bar">
     <h1>Polybot</h1>
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="balance-chip mono" id="balance-chip" onclick="loadBalance()" title="Нажми для обновления" style="cursor:pointer">$—</div>
+      <div class="balance-chip mono" id="balance-chip" onclick="loadBalance()" ondblclick="debugBalance()" title="Клик=обновить, 2×клик=диагностика" style="cursor:pointer">$—</div>
       <button class="logout-btn" onclick="doLogout()">выйти</button>
     </div>
   </div>
@@ -377,6 +377,29 @@ async function showBot() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('bot-screen').style.display = 'block';
   loadHistory(); loadBalance(); loadMarkets();
+}
+
+async function debugBalance() {
+  if (!creds.secret) { alert('Нет secret — войди через MetaMask'); return; }
+  let info = `Address: ${creds.address}\nHas secret: ${!!creds.secret}\nHas passphrase: ${!!creds.passphrase}\n\n`;
+  try {
+    const ts = String(Math.floor(Date.now() / 1000));
+    const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance');
+    const res = await fetch('https://clob.polymarket.com/balance', {
+      headers: {
+        'POLY_ADDRESS': creds.address, 'POLY_API_KEY': creds.apiKey,
+        'POLY_SIGNATURE': sig, 'POLY_TIMESTAMP': ts, 'POLY_PASSPHRASE': creds.passphrase
+      }
+    });
+    const text = await res.text();
+    info += `Direct CLOB: HTTP ${res.status}\n${text}\n\n`;
+  } catch(e) { info += `Direct CLOB error: ${e.message}\n\n`; }
+  try {
+    const res = await proxyGet('balance');
+    const text = await res.text();
+    info += `Proxy CLOB: HTTP ${res.status}\n${text}`;
+  } catch(e) { info += `Proxy error: ${e.message}`; }
+  alert(info);
 }
 
 async function loadBalance() {
