@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Polybot</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -264,30 +265,21 @@ async function loginMetaMask() {
     const serverTs = await fetch('https://clob.polymarket.com/time').then(r => r.json()).catch(() => Math.floor(Date.now() / 1000));
     const timestamp = String(typeof serverTs === 'number' ? serverTs : Math.floor(Date.now() / 1000));
     const nonce = 0;
-    const typedData = JSON.stringify({
-      domain: { name: 'ClobAuthDomain', version: '1', chainId: 137 },
-      types: {
-        ClobAuth: [
-          { name: 'address',   type: 'address' },
-          { name: 'timestamp', type: 'string'  },
-          { name: 'nonce',     type: 'uint256' },
-          { name: 'message',   type: 'string'  }
-        ]
-      },
-      primaryType: 'ClobAuth',
-      message: {
-        address,
-        timestamp,
-        nonce,
-        message: 'This message attests that I control the given wallet'
-      }
-    });
-
     btn.textContent = '🦊 Подпиши в MetaMask...';
-    const signature = await window.ethereum.request({
-      method: 'eth_signTypedData_v4',
-      params: [address, typedData]
-    });
+    // Use ethers.js BrowserProvider — same code path as Polymarket SDK (signer._signTypedData)
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer   = await provider.getSigner();
+    const domain   = { name: 'ClobAuthDomain', version: '1', chainId: 137 };
+    const types    = {
+      ClobAuth: [
+        { name: 'address',   type: 'address' },
+        { name: 'timestamp', type: 'string'  },
+        { name: 'nonce',     type: 'uint256' },
+        { name: 'message',   type: 'string'  }
+      ]
+    };
+    const value    = { address, timestamp, nonce, message: 'This message attests that I control the given wallet' };
+    const signature = await signer.signTypedData(domain, types, value);
 
     btn.textContent = '🦊 Получаю ключи...';
     const res = await fetch('https://clob.polymarket.com/auth/api-key', {
