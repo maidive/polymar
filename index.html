@@ -172,6 +172,11 @@
       <button class="logout-btn" onclick="doLogout()">выйти</button>
     </div>
   </div>
+  <div id="worker-banner" style="display:none;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.6;">
+    <b style="color:var(--accent)">Для баланса нужен CF Worker</b><br>
+    1. <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--accent)">workers.cloudflare.com</a> → Create Worker → вставь код из <code>worker.js</code> → Deploy<br>
+    2. Нажми <b style="color:var(--text)">⚙</b> выше → вставь URL воркера → Сохранить
+  </div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
     <input type="text" id="search-input" placeholder="Поиск рынков..." oninput="filterMarkets()">
@@ -401,6 +406,7 @@ async function directOrder(body) {
 async function showBot() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('bot-screen').style.display = 'block';
+  document.getElementById('worker-banner').style.display = cfWorkerUrl ? 'none' : 'block';
   loadHistory(); loadBalance(); loadMarkets();
 }
 
@@ -420,11 +426,17 @@ async function debugBalance() {
   alert(info);
 }
 
+async function fetchWithTimeout(url, opts, ms = 4000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
+}
+
 async function fetchWalletUSDC(address) {
   const rpcs = [
-    'https://polygon.llamarpc.com',
-    'https://rpc.ankr.com/polygon',
     'https://1rpc.io/matic',
+    'https://polygon-bor-rpc.publicnode.com',
   ];
   const tokens = [
     '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', // Native USDC
@@ -434,14 +446,15 @@ async function fetchWalletUSDC(address) {
     jsonrpc: '2.0', id: 1, method: 'eth_call',
     params: [{ to, data: '0x70a08231' + address.replace('0x','').padStart(64,'0') }, 'latest']
   });
-  // Try each RPC until one works
   for (const rpc of rpcs) {
     try {
-      const results = await Promise.all(tokens.map(t =>
-        fetch(rpc, { method: 'POST', headers: {'Content-Type':'application/json'}, body: callBody(t) })
-          .then(r => r.json()).then(j => j.result ? parseInt(j.result,16)/1e6 : 0)
-      ));
-      return results.reduce((a,b) => a+b, 0);
+      const opts = { method: 'POST', headers: {'Content-Type':'application/json'} };
+      const results = await Promise.all(tokens.map(async t => {
+        const r = await fetchWithTimeout(rpc, { ...opts, body: callBody(t) });
+        const j = await r.json();
+        return j.result ? parseInt(j.result, 16) / 1e6 : 0;
+      }));
+      return results.reduce((a, b) => a + b, 0);
     } catch(e) { continue; }
   }
   return null;
@@ -475,8 +488,8 @@ async function loadBalance() {
     return;
   }
 
-  chip.textContent = '$—';
-  chip.title = 'Ошибка. Задеплой CF Worker → ⚙';
+  chip.textContent = '$? ⚙';
+  chip.title = 'Нажми ⚙ → вставь CF Worker URL для показа $5';
 }
 
 async function loadMarkets() {
@@ -664,6 +677,7 @@ function saveWorkerUrl() {
   cfWorkerUrl = url;
   if (url) localStorage.setItem('poly_worker_url', url);
   else localStorage.removeItem('poly_worker_url');
+  document.getElementById('worker-banner').style.display = url ? 'none' : 'block';
   closeSettings();
   loadBalance();
 }
