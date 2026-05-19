@@ -468,35 +468,37 @@ async function loadBalance() {
     return;
   }
 
-  // CLOB balance — работает через CF Worker, блокируется через Vercel (CF WAF)
+  // CLOB balance через CF Worker
   try {
     const res = await proxyGet('balance_allowance?asset_type=USDC');
+    const text = await res.text();
     if (res.ok) {
-      const d = await res.json();
+      const d = JSON.parse(text);
       const amt = d.balance ?? d.allowance ?? 0;
       chip.textContent = '$' + parseFloat(amt).toFixed(2);
       chip.title = 'CLOB баланс Polymarket';
       return;
     }
-  } catch(e) {}
+    chip.title = `CLOB ${res.status}: ${text.slice(0,80)}`;
+  } catch(e) {
+    chip.title = 'CLOB error: ' + e.message;
+  }
 
   // Fallback: баланс кошелька USDC (Polygon RPC)
   const wBal = await fetchWalletUSDC(creds.address);
   if (wBal !== null) {
     chip.textContent = 'w$' + wBal.toFixed(2);
-    chip.title = 'Кошелёк USDC (не CLOB депозит). Задеплой CF Worker → ⚙';
     return;
   }
 
-  chip.textContent = '$? ⚙';
-  chip.title = 'Нажми ⚙ → вставь CF Worker URL для показа $5';
+  chip.textContent = '$—';
 }
 
 async function loadMarkets() {
   try {
-    const res = await fetch(`${PROXY}/api/markets`);
+    const res = await fetch('https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=50&order=volume24hr&ascending=false');
     const data = await res.json();
-    allMarkets = data.data || data.results || (Array.isArray(data) ? data : []);
+    allMarkets = (Array.isArray(data) ? data : []).map(normalizeGamma);
     renderMarkets(allMarkets);
   } catch(e) {
     document.getElementById('markets-list').innerHTML = '<div class="loading" style="color:var(--red)">Ошибка загрузки рынков</div>';
