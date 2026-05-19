@@ -412,17 +412,33 @@ async function showBot() {
 
 async function debugBalance() {
   if (!creds?.secret) { alert('Нет secret — войди через MetaMask'); return; }
-  let info = `Address: ${creds.address}\nCF Worker: ${cfWorkerUrl || 'не задан'}\n\n`;
+  let info = `=== ДИАГНОСТИКА БАЛАНСА ===\n\n`;
+
+  // 1. Прямой браузерный вызов
+  try {
+    const ts  = String(Math.floor(Date.now() / 1000));
+    const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance_allowance?asset_type=USDC');
+    const res = await fetch('https://clob.polymarket.com/balance_allowance?asset_type=USDC', {
+      headers: { 'POLY_ADDRESS': creds.address, 'POLY_API_KEY': creds.apiKey,
+                 'POLY_SIGNATURE': sig, 'POLY_TIMESTAMP': ts, 'POLY_PASSPHRASE': creds.passphrase }
+    });
+    const text = await res.text();
+    info += `[1] Direct: HTTP ${res.status}\n${text.slice(0,150)}\n\n`;
+  } catch(e) { info += `[1] Direct ERROR: ${e.message}\n\n`; }
+
+  // 2. CF Worker proxy
   try {
     const res = await proxyGet('balance_allowance?asset_type=USDC');
     const text = await res.text();
-    info += `CLOB balance_allowance: HTTP ${res.status}\n${text.slice(0,200)}\n\n`;
-  } catch(e) { info += `CLOB error: ${e.message}\n\n`; }
+    info += `[2] CF Worker: HTTP ${res.status}\n${text.slice(0,150)}\n\n`;
+  } catch(e) { info += `[2] CF Worker ERROR: ${e.message}\n\n`; }
+
+  // 3. Wallet
   try {
     const wBal = await fetchWalletUSDC(creds.address);
-    info += `Wallet USDC (Polygon): $${wBal.toFixed(2)}\n\n`;
-  } catch(e) { info += `Wallet error: ${e.message}\n\n`; }
-  info += cfWorkerUrl ? '' : 'Совет: задеплой worker.js → ⚙ в хедере → вставь URL';
+    info += `[3] Wallet USDC: $${wBal !== null ? wBal.toFixed(2) : 'null'}\n`;
+  } catch(e) { info += `[3] Wallet ERROR: ${e.message}\n`; }
+
   alert(info);
 }
 
