@@ -387,11 +387,7 @@ async function hmacBrowser(secret, message) {
 }
 
 async function directOrder(body) {
-  if (creds.secret) {
-    // HMAC-signed via proxy (full CLOB auth)
-    return proxyPost('order', body);
-  }
-  // Relayer API fallback (no HMAC needed)
+  // Direct browser call — CF WAF allows /order with RELAYER headers (CORS 204 confirmed)
   return fetch('https://clob.polymarket.com/order', {
     method: 'POST',
     headers: {
@@ -484,48 +480,11 @@ async function loadBalance() {
     return;
   }
 
-  // 1. Прямой браузерный вызов (Chrome TLS fingerprint — CF пропускает)
-  try {
-    const ts  = String(Math.floor(Date.now() / 1000));
-    const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance_allowance?asset_type=USDC');
-    const res = await fetch('https://clob.polymarket.com/balance_allowance?asset_type=USDC', {
-      headers: {
-        'POLY_ADDRESS':    creds.address,
-        'POLY_API_KEY':    creds.apiKey,
-        'POLY_SIGNATURE':  sig,
-        'POLY_TIMESTAMP':  ts,
-        'POLY_PASSPHRASE': creds.passphrase,
-      }
-    });
-    if (res.ok) {
-      const d = await res.json();
-      const amt = d.balance ?? d.allowance ?? 0;
-      chip.textContent = '$' + parseFloat(amt).toFixed(2);
-      chip.title = 'CLOB баланс Polymarket';
-      return;
-    }
-  } catch(e) {}
-
-  // 2. CF Worker proxy
-  try {
-    const res = await proxyGet('balance_allowance?asset_type=USDC');
-    const text = await res.text();
-    if (res.ok) {
-      const d = JSON.parse(text);
-      const amt = d.balance ?? d.allowance ?? 0;
-      chip.textContent = '$' + parseFloat(amt).toFixed(2);
-      chip.title = 'CLOB баланс (proxy)';
-      return;
-    }
-    chip.title = `CLOB ${res.status}: ${text.slice(0,80)}`;
-  } catch(e) {
-    chip.title = 'proxy error: ' + e.message;
-  }
-
-  // Fallback: баланс кошелька USDC (Polygon RPC)
+  // Баланс кошелька через Polygon RPC (CLOB balance недоступен — CF WAF)
   const wBal = await fetchWalletUSDC(creds.address);
   if (wBal !== null) {
-    chip.textContent = 'w$' + wBal.toFixed(2);
+    chip.textContent = '$' + wBal.toFixed(2);
+    chip.title = 'Кошелёк USDC на Polygon';
     return;
   }
 
