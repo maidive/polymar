@@ -282,19 +282,23 @@ async function loginMetaMask() {
     const signature = await signer.signTypedData(domain, types, value);
 
     btn.textContent = '🦊 Получаю ключи...';
-    const res = await fetch('https://clob.polymarket.com/auth/api-key', {
-      method: 'POST',
-      headers: {
-        'POLY_ADDRESS':   address,
-        'POLY_SIGNATURE': signature,
-        'POLY_TIMESTAMP': timestamp,
-        'POLY_NONCE':     String(nonce)
-      }
-    });
-    const keys = await res.json().catch(() => ({}));
-    if (!res.ok || !keys.apiKey) throw new Error(keys.error || `HTTP ${res.status}`);
+    const authHeaders = {
+      'POLY_ADDRESS':   address,
+      'POLY_SIGNATURE': signature,
+      'POLY_TIMESTAMP': timestamp,
+      'POLY_NONCE':     String(nonce)
+    };
+    // Try POST (create), fallback to GET (derive existing key)
+    let res = await fetch('https://clob.polymarket.com/auth/api-key', { method: 'POST', headers: authHeaders });
+    let keys = await res.json().catch(() => ({}));
+    if (!res.ok || (!keys.apiKey && !keys.key)) {
+      res  = await fetch('https://clob.polymarket.com/auth/api-key', { method: 'GET', headers: authHeaders });
+      keys = await res.json().catch(() => ({}));
+    }
+    const apiKey = keys.apiKey || keys.key;
+    if (!apiKey) throw new Error(keys.error || `HTTP ${res.status}`);
 
-    creds = { address, apiKey: keys.apiKey, secret: keys.secret, passphrase: keys.passphrase };
+    creds = { address, apiKey, secret: keys.secret, passphrase: keys.passphrase };
     saveCreds(creds);
     showBot();
   } catch(e) {
