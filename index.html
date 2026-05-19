@@ -383,7 +383,7 @@ async function loadBalance() {
     if (creds.secret) {
       const res = await proxyGet('balance');
       const d = await res.json();
-      if (!res.ok) { chip.textContent = '$?'; return; }
+      if (!res.ok) { chip.textContent = 'E' + res.status; return; }
       const amt = d.balance ?? d.USDC ?? d.value ?? 0;
       chip.textContent = '$' + parseFloat(amt).toFixed(2);
     } else {
