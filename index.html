@@ -386,17 +386,59 @@ async function hmacBrowser(secret, message) {
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
-async function directOrder(body) {
-  // Direct browser call — CF WAF allows /order with RELAYER headers (CORS 204 confirmed)
-  return fetch('https://clob.polymarket.com/order', {
-    method: 'POST',
-    headers: {
-      'Content-Type':           'application/json',
-      'RELAYER_API_KEY':         creds.apiKey,
-      'RELAYER_API_KEY_ADDRESS': creds.address,
+async function buildSignedOrder(tokenId, usdcAmount, price, negRisk) {
+  const eoa = creds.address;
+  // FOK market order: 5% slippage so it fills at current market price
+  const limitPrice = Math.min(price * 1.05, 0.999);
+  const makerAmount = String(Math.round(usdcAmount * 1e6));
+  const takerAmount = String(Math.round((usdcAmount / limitPrice) * 1e6));
+  const contract = negRisk
+    ? '0xC5d563A36AE78145C45a50134d48A1215220f80a'
+    : '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
+
+  const message = {
+    salt:          String(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)),
+    maker:         creds.proxyWallet || eoa,
+    signer:        eoa,
+    taker:         '0x0000000000000000000000000000000000000000',
+    tokenId,
+    makerAmount,
+    takerAmount,
+    expiration:    '0',
+    nonce:         '0',
+    feeRateBps:    '0',
+    side:          0,
+    signatureType: 0
+  };
+
+  const typedData = {
+    domain: { name: 'Polymarket CTF Exchange', version: '1', chainId: 137, verifyingContract: contract },
+    types: {
+      Order: [
+        { name: 'salt',          type: 'uint256' },
+        { name: 'maker',         type: 'address' },
+        { name: 'signer',        type: 'address' },
+        { name: 'taker',         type: 'address' },
+        { name: 'tokenId',       type: 'uint256' },
+        { name: 'makerAmount',   type: 'uint256' },
+        { name: 'takerAmount',   type: 'uint256' },
+        { name: 'expiration',    type: 'uint256' },
+        { name: 'nonce',         type: 'uint256' },
+        { name: 'feeRateBps',    type: 'uint256' },
+        { name: 'side',          type: 'uint8'   },
+        { name: 'signatureType', type: 'uint8'   }
+      ]
     },
-    body: JSON.stringify(body)
+    primaryType: 'Order',
+    message
+  };
+
+  const signature = await window.ethereum.request({
+    method: 'eth_signTypedData_v4',
+    params: [eoa, JSON.stringify(typedData)]
   });
+
+  return { ...message, signature };
 }
 
 async function showBot() {
@@ -554,6 +596,7 @@ function normalizeGamma(m) {
     question: m.question,
     volume: m.volume,
     endDate: m.endDate,
+    negRisk: !!m.negRisk,
     tokens: outcomes.map((o, i) => ({
       outcome: o,
       price: parseFloat(prices[i] || 0.5),
@@ -598,42 +641,75 @@ async function placeBet() {
   if (!selectedMarket || !selectedSide) return;
   const amount = parseFloat(document.getElementById('amount-input').value);
   if (!amount || amount <= 0) { alert('Введи сумму'); return; }
+  if (!creds?.secret) { alert('Войди через MetaMask для ставок'); return; }
+  if (!window.ethereum) { alert('MetaMask не подключён'); return; }
+
   const btn = document.getElementById('btn-bet');
   btn.disabled = true;
-  const origText = btn.textContent;
-  btn.textContent = 'Отправляю...';
+  btn.textContent = '✍️ Подпиши...';
   const t0 = Date.now();
+
   try {
     const tokens  = selectedMarket.tokens || [];
-    const token   = tokens.find(t => t.outcome === (selectedSide === 'YES' ? 'Yes' : 'No')) || (selectedSide === 'YES' ? tokens[0] : tokens[1]) || {};
+    const token   = tokens.find(t => t.outcome === (selectedSide === 'YES' ? 'Yes' : 'No'))
+                    || (selectedSide === 'YES' ? tokens[0] : tokens[1]) || {};
     const price   = token.price || 0.5;
     const tokenId = token.token_id;
-    const size    = (amount / price).toFixed(2);
-    const orderBody = {
-      order: {
-        tokenId,
-        price,
-        size: parseFloat(size),
-        side: 'BUY',
-        type: 'MARKET',
-        timeInForce: 'FOK'
-      }
-    };
-    const res = await directOrder(orderBody);
-    const ms = Date.now() - t0;
-    const data = await res.json();
-    if (res.ok && !data.error) {
+    if (!tokenId) throw new Error('Нет tokenId');
+
+    // EIP-712 sign with MetaMask
+    const orderStruct = await buildSignedOrder(tokenId, amount, price, selectedMarket.negRisk);
+    btn.textContent = 'Отправляю...';
+
+    const orderBody = { order: orderStruct, owner: creds.proxyWallet || creds.address, orderType: 'FOK' };
+    const bodyStr   = JSON.stringify(orderBody);
+    const ts        = Math.floor(Date.now() / 1000).toString();
+    const sig       = await hmacBrowser(creds.secret, ts + 'POST' + '/order' + bodyStr);
+
+    let res;
+    try {
+      // Try direct browser call first (fastest, no proxy latency)
+      res = await fetch('https://clob.polymarket.com/order', {
+        method: 'POST',
+        headers: {
+          'Content-Type':    'application/json',
+          'POLY_ADDRESS':    creds.address,
+          'POLY_API_KEY':    creds.apiKey,
+          'POLY_SIGNATURE':  sig,
+          'POLY_TIMESTAMP':  ts,
+          'POLY_PASSPHRASE': creds.passphrase
+        },
+        body: bodyStr
+      });
+    } catch(_) {
+      // CORS blocked — fall back to CF Worker
+      res = await proxyPost('order', orderBody, creds);
+    }
+
+    const ms   = Date.now() - t0;
+    const text = await res.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(_) {}
+
+    if (res.ok && (data.success || data.orderID || data.order)) {
       addHistory(selectedMarket.question, selectedSide, amount, ms, 'ok');
       loadBalance();
-      btn.textContent = `✓ Принято (${ms}ms)`;
-      setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 2000);
+      btn.textContent = `✓ ${ms}ms`;
+      setTimeout(() => { btn.disabled = false; btn.textContent = `Поставить ${selectedSide}`; }, 2000);
     } else {
+      const errMsg = data.error || data.errorMsg || (text.includes('<html') ? 'CF WAF' : `HTTP ${res.status}`);
       addHistory(selectedMarket.question, selectedSide, amount, ms, 'err');
-      btn.textContent = `✗ ${data.error || 'Ошибка'}`;
-      setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3000);
+      btn.textContent = `✗ ${String(errMsg).slice(0, 50)}`;
+      console.error('Order error:', res.status, text.slice(0, 400));
+      setTimeout(() => { btn.disabled = false; btn.textContent = `Поставить ${selectedSide}`; }, 4000);
     }
   } catch(e) {
-    btn.textContent = '✗ Сеть';
+    if (e.code === 4001) {
+      btn.textContent = '✗ Отклонено MetaMask';
+    } else {
+      btn.textContent = `✗ ${e.message?.slice(0, 50) || 'Ошибка'}`;
+      console.error('placeBet error:', e);
+    }
     btn.disabled = false;
   }
 }
