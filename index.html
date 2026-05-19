@@ -417,17 +417,23 @@ async function loadBalance() {
     return;
   }
 
-  // 2. Polygon RPC — wallet USDC.e (last resort)
+  // 2. Polygon RPC — проверяем оба USDC контракта
   try {
-    const USDC = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
-    const data = '0x70a08231' + creds.address.slice(2).padStart(64, '0');
-    const r = await fetch('https://polygon-rpc.com/', {
+    const addr = creds.address.slice(2).padStart(64, '0');
+    const calldata = '0x70a08231' + addr;
+    const rpc = 'https://rpc-mainnet.matic.quiknode.pro/';
+    const call = (to) => fetch(rpc, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_call', params: [{ to: USDC, data }, 'latest'], id: 1 })
-    });
-    const { result } = await r.json();
-    chip.textContent = '$' + (parseInt(result || '0x0', 16) / 1e6).toFixed(2);
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_call', params: [{ to, data: calldata }, 'latest'], id: 1 })
+    }).then(r => r.json()).then(j => parseInt(j.result || '0x0', 16) / 1e6);
+
+    const [native, bridged] = await Promise.all([
+      call('0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'), // Native USDC
+      call('0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174')  // USDC.e (bridged)
+    ]);
+    const total = native + bridged;
+    chip.textContent = '$' + total.toFixed(2);
   } catch(e) {
     chip.textContent = '$—';
   }
