@@ -168,6 +168,7 @@
     <h1>Polybot</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="balance-chip mono" id="balance-chip" onclick="loadBalance()" ondblclick="debugBalance()" title="Клик=обновить, 2×клик=диагностика" style="cursor:pointer">$—</div>
+      <button class="logout-btn" onclick="openSettings()" title="Настройки CF Worker">⚙</button>
       <button class="logout-btn" onclick="doLogout()">выйти</button>
     </div>
   </div>
@@ -200,8 +201,27 @@
   <div class="history-list" id="history-list"></div>
 </div>
 
+<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:400px;">
+    <div style="font-size:16px;font-weight:600;margin-bottom:6px;">CF Worker URL</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.55;">
+      Vercel/AWS заблокированы Cloudflare — баланс и ордера требуют CF Worker.<br>
+      Деплой: <span style="color:var(--accent)">workers.cloudflare.com</span> → Create Worker → вставь код из <code>worker.js</code> → Deploy → скопируй URL сюда.
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>WORKER URL</label>
+      <input id="worker-url-inp" type="text" placeholder="https://polybot.YOUR.workers.dev" style="font-size:13px;">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" style="margin:0;flex:1;" onclick="saveWorkerUrl()">Сохранить</button>
+      <button onclick="closeSettings()" style="flex:1;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:12px;cursor:pointer;font-size:14px;">Отмена</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const PROXY = 'https://polymar-nine.vercel.app';
+let cfWorkerUrl = localStorage.getItem('poly_worker_url') || '';
 let creds = null;
 let allMarkets = [];
 let selectedMarket = null;
@@ -334,14 +354,19 @@ async function proxyGet(path, c = creds) {
   const params = new URLSearchParams({ path, apiKey: c.apiKey, address: c.address });
   if (c.secret)     params.set('secret',     c.secret);
   if (c.passphrase) params.set('passphrase', c.passphrase);
-  return fetch(`${PROXY}/api/proxy?${params}`);
+  const endpoint = cfWorkerUrl ? cfWorkerUrl : `${PROXY}/api/proxy`;
+  return fetch(`${endpoint}?${params}`);
 }
 
 async function proxyPost(path, body, c = creds) {
-  return fetch(`${PROXY}/api/proxy?path=${encodeURIComponent(path)}`, {
+  const params = new URLSearchParams({ path, apiKey: c.apiKey, address: c.address });
+  if (c.secret)     params.set('secret',     c.secret);
+  if (c.passphrase) params.set('passphrase', c.passphrase);
+  const endpoint = cfWorkerUrl ? cfWorkerUrl : `${PROXY}/api/proxy`;
+  return fetch(`${endpoint}?${params}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ _creds: c, ...body })
+    body: JSON.stringify(body)
   });
 }
 
@@ -380,87 +405,70 @@ async function showBot() {
 }
 
 async function debugBalance() {
-  if (!creds.secret) { alert('Нет secret — войди через MetaMask'); return; }
-  let info = `Address: ${creds.address}\nSecret: ${!!creds.secret}\n\n`;
+  if (!creds?.secret) { alert('Нет secret — войди через MetaMask'); return; }
+  let info = `Address: ${creds.address}\nCF Worker: ${cfWorkerUrl || 'не задан'}\n\n`;
   try {
     const res = await proxyGet('balance_allowance?asset_type=USDC');
     const text = await res.text();
-    info += `balance_allowance: HTTP ${res.status}\n${text}\n\n`;
-  } catch(e) { info += `balance_allowance error: ${e.message}\n\n`; }
+    info += `CLOB balance_allowance: HTTP ${res.status}\n${text.slice(0,200)}\n\n`;
+  } catch(e) { info += `CLOB error: ${e.message}\n\n`; }
   try {
-    const res = await proxyGet('open_orders');
-    const text = await res.text();
-    info += `open_orders: HTTP ${res.status}\n${text.slice(0,300)}`;
-  } catch(e) { info += `open_orders error: ${e.message}`; }
+    const wBal = await fetchWalletUSDC(creds.address);
+    info += `Wallet USDC (Polygon): $${wBal.toFixed(2)}\n\n`;
+  } catch(e) { info += `Wallet error: ${e.message}\n\n`; }
+  info += cfWorkerUrl ? '' : 'Совет: задеплой worker.js → ⚙ в хедере → вставь URL';
   alert(info);
 }
 
-async function fetchBalanceWS() {
-  return new Promise(async (resolve) => {
-    const timeout = setTimeout(() => { try { ws.close(); } catch(e){} resolve(null); }, 6000);
-    let ws;
-    try {
-      const ts  = String(Math.floor(Date.now() / 1000));
-      const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/ws/user');
-      ws = new WebSocket('wss://ws-subscriptions-clob.polymarket.com/ws/user');
-
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          auth: { apiKey: creds.apiKey, secret: creds.secret,
-                  passphrase: creds.passphrase, timestamp: ts, signature: sig },
-          type: 'subscribe', channel: 'user',
-          markets: [], assets_ids: []
-        }));
-      };
-
-      ws.onmessage = (e) => {
-        try {
-          const msgs = JSON.parse(e.data);
-          const list = Array.isArray(msgs) ? msgs : [msgs];
-          for (const m of list) {
-            const bal = m.balance ?? m.cash_balance ?? m.usdc_balance ?? m.USDC;
-            if (bal != null) {
-              clearTimeout(timeout); ws.close(); resolve(bal); return;
-            }
-          }
-        } catch(err) {}
-      };
-
-      ws.onerror = () => { clearTimeout(timeout); resolve(null); };
-      ws.onclose = () => { clearTimeout(timeout); resolve(null); };
-    } catch(e) { clearTimeout(timeout); resolve(null); }
+async function fetchWalletUSDC(address) {
+  const rpc = 'https://rpc-mainnet.matic.quiknode.pro';
+  const tokens = [
+    '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', // Native USDC
+    '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'  // USDC.e
+  ];
+  const call = (to) => ({
+    jsonrpc: '2.0', id: 1, method: 'eth_call',
+    params: [{ to, data: '0x70a08231' + address.replace('0x','').padStart(64,'0') }, 'latest']
   });
+  const results = await Promise.all(tokens.map(t =>
+    fetch(rpc, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(call(t)) })
+      .then(r => r.json()).then(j => j.result ? parseInt(j.result,16)/1e6 : 0).catch(() => 0)
+  ));
+  return results.reduce((a,b) => a+b, 0);
 }
 
 async function loadBalance() {
   const chip = document.getElementById('balance-chip');
-  chip.title = 'Баланс Polymarket (USDC депозит)';
-
-  if (!creds.secret) {
+  if (!creds?.secret) {
     chip.textContent = '↻ войди';
-    chip.title = 'Войди через MetaMask для показа баланса Polymarket';
+    chip.title = 'Войди через MetaMask для показа баланса';
     return;
   }
 
-  // WebSocket User Channel — CF пропускает WS иначе чем HTTP
-  const wsBalance = await fetchBalanceWS();
-  if (wsBalance !== null) {
-    chip.textContent = '$' + parseFloat(wsBalance).toFixed(2);
-    return;
-  }
-
-  // Fallback: proxy (для не-CF сред)
+  // CLOB balance — работает через CF Worker, блокируется через Vercel (CF WAF)
   try {
-    const res = await proxyGet('balance_allowance?asset_type=USDC&asset_address=0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174');
-    const d = await res.json();
+    const res = await proxyGet('balance_allowance?asset_type=USDC');
     if (res.ok) {
+      const d = await res.json();
       const amt = d.balance ?? d.allowance ?? 0;
       chip.textContent = '$' + parseFloat(amt).toFixed(2);
+      chip.title = 'CLOB баланс Polymarket';
       return;
     }
   } catch(e) {}
 
+  // Fallback: баланс кошелька USDC (Polygon RPC, всегда работает)
+  try {
+    const wBal = await fetchWalletUSDC(creds.address);
+    chip.textContent = '$' + wBal.toFixed(2);
+    chip.title = cfWorkerUrl
+      ? 'Баланс кошелька USDC (ошибка CLOB)'
+      : 'Баланс кошелька USDC. Для депозита Polymarket — задеплой CF Worker → ⚙';
+    return;
+  } catch(e) {}
+
   chip.textContent = '$—';
+  chip.title = cfWorkerUrl ? 'Ошибка' : 'Задеплой CF Worker → ⚙';
 }
 
 async function loadMarkets() {
@@ -634,6 +642,24 @@ function renderHistory() {
   ).join('');
 }
 
+function openSettings() {
+  document.getElementById('worker-url-inp').value = cfWorkerUrl;
+  document.getElementById('settings-modal').style.display = 'flex';
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').style.display = 'none';
+}
+
+function saveWorkerUrl() {
+  const url = document.getElementById('worker-url-inp').value.trim().replace(/\/$/, '');
+  cfWorkerUrl = url;
+  if (url) localStorage.setItem('poly_worker_url', url);
+  else localStorage.removeItem('poly_worker_url');
+  closeSettings();
+  loadBalance();
+}
+
 (function init() {
   const saved = loadCreds();
   if (saved) {
@@ -642,7 +668,6 @@ function renderHistory() {
     document.getElementById('inp-key').value  = saved.apiKey  || '';
     showBot();
   }
-  // Hint for mobile users without injected provider
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   if (isMobile && !window.ethereum) {
     document.getElementById('metamask-btn').innerHTML = '🦊 Открыть в MetaMask';
