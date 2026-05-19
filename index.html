@@ -468,7 +468,29 @@ async function loadBalance() {
     return;
   }
 
-  // CLOB balance через CF Worker
+  // 1. Прямой браузерный вызов (Chrome TLS fingerprint — CF пропускает)
+  try {
+    const ts  = String(Math.floor(Date.now() / 1000));
+    const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance_allowance?asset_type=USDC');
+    const res = await fetch('https://clob.polymarket.com/balance_allowance?asset_type=USDC', {
+      headers: {
+        'POLY_ADDRESS':    creds.address,
+        'POLY_API_KEY':    creds.apiKey,
+        'POLY_SIGNATURE':  sig,
+        'POLY_TIMESTAMP':  ts,
+        'POLY_PASSPHRASE': creds.passphrase,
+      }
+    });
+    if (res.ok) {
+      const d = await res.json();
+      const amt = d.balance ?? d.allowance ?? 0;
+      chip.textContent = '$' + parseFloat(amt).toFixed(2);
+      chip.title = 'CLOB баланс Polymarket';
+      return;
+    }
+  } catch(e) {}
+
+  // 2. CF Worker proxy
   try {
     const res = await proxyGet('balance_allowance?asset_type=USDC');
     const text = await res.text();
@@ -476,12 +498,12 @@ async function loadBalance() {
       const d = JSON.parse(text);
       const amt = d.balance ?? d.allowance ?? 0;
       chip.textContent = '$' + parseFloat(amt).toFixed(2);
-      chip.title = 'CLOB баланс Polymarket';
+      chip.title = 'CLOB баланс (proxy)';
       return;
     }
     chip.title = `CLOB ${res.status}: ${text.slice(0,80)}`;
   } catch(e) {
-    chip.title = 'CLOB error: ' + e.message;
+    chip.title = 'proxy error: ' + e.message;
   }
 
   // Fallback: баланс кошелька USDC (Polygon RPC)
