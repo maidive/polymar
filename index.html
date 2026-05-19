@@ -381,24 +381,17 @@ async function showBot() {
 
 async function debugBalance() {
   if (!creds.secret) { alert('Нет secret — войди через MetaMask'); return; }
-  let info = `Address: ${creds.address}\nHas secret: ${!!creds.secret}\nHas passphrase: ${!!creds.passphrase}\n\n`;
+  let info = `Address: ${creds.address}\nSecret: ${!!creds.secret}\n\n`;
   try {
-    const ts = String(Math.floor(Date.now() / 1000));
-    const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance');
-    const res = await fetch('https://clob.polymarket.com/balance', {
-      headers: {
-        'POLY_ADDRESS': creds.address, 'POLY_API_KEY': creds.apiKey,
-        'POLY_SIGNATURE': sig, 'POLY_TIMESTAMP': ts, 'POLY_PASSPHRASE': creds.passphrase
-      }
-    });
+    const res = await proxyGet('balance_allowance?asset_type=USDC');
     const text = await res.text();
-    info += `Direct CLOB: HTTP ${res.status}\n${text}\n\n`;
-  } catch(e) { info += `Direct CLOB error: ${e.message}\n\n`; }
+    info += `balance_allowance: HTTP ${res.status}\n${text}\n\n`;
+  } catch(e) { info += `balance_allowance error: ${e.message}\n\n`; }
   try {
-    const res = await proxyGet('balance');
+    const res = await proxyGet('open_orders');
     const text = await res.text();
-    info += `Proxy CLOB: HTTP ${res.status}\n${text}`;
-  } catch(e) { info += `Proxy error: ${e.message}`; }
+    info += `open_orders: HTTP ${res.status}\n${text.slice(0,300)}`;
+  } catch(e) { info += `open_orders error: ${e.message}`; }
   alert(info);
 }
 
@@ -412,32 +405,24 @@ async function loadBalance() {
     return;
   }
 
-  // Прямой вызов CLOB из браузера (без proxy)
+  // Правильный endpoint: /balance_allowance (не /balance — его не существует)
   try {
-    const ts = String(Math.floor(Date.now() / 1000));
-    const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance');
-    const res = await fetch('https://clob.polymarket.com/balance', {
-      headers: {
-        'POLY_ADDRESS':    creds.address,
-        'POLY_API_KEY':    creds.apiKey,
-        'POLY_SIGNATURE':  sig,
-        'POLY_TIMESTAMP':  ts,
-        'POLY_PASSPHRASE': creds.passphrase
-      }
-    });
+    const res = await proxyGet('balance_allowance?asset_type=USDC');
     const d = await res.json();
-    if (res.ok && d.balance != null) {
-      chip.textContent = '$' + parseFloat(d.balance).toFixed(2);
+    if (res.ok) {
+      const amt = d.balance ?? d.allowance ?? d.amount ?? d.USDC ?? 0;
+      chip.textContent = '$' + parseFloat(amt).toFixed(2);
       return;
     }
   } catch(e) {}
 
-  // Fallback: proxy (если CORS заблокировал прямой вызов)
+  // Fallback: без фильтра по asset_type
   try {
-    const res = await proxyGet('balance');
+    const res = await proxyGet('balance_allowance');
     const d = await res.json();
-    if (res.ok && d.balance != null) {
-      chip.textContent = '$' + parseFloat(d.balance).toFixed(2);
+    if (res.ok) {
+      const amt = d.balance ?? d.allowance ?? 0;
+      chip.textContent = '$' + parseFloat(amt).toFixed(2);
       return;
     }
   } catch(e) {}
