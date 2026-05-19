@@ -289,14 +289,15 @@ async function loginMetaMask() {
     });
 
     btn.textContent = '🦊 Получаю ключи...';
-    const params = new URLSearchParams({
-      path: 'auth/api-key',
-      address: address.toLowerCase(),
-      l1sig: signature,
-      l1ts: timestamp,
-      l1nonce: nonce.toString()
+    const res = await fetch('https://clob.polymarket.com/auth/api-key', {
+      method: 'POST',
+      headers: {
+        'POLY_ADDRESS':   address.toLowerCase(),
+        'POLY_SIGNATURE': signature,
+        'POLY_TIMESTAMP': timestamp,
+        'POLY_NONCE':     String(nonce)
+      }
     });
-    const res = await fetch(`${PROXY}/api/proxy?${params}`, { method: 'POST' });
     const keys = await res.json().catch(() => ({}));
     if (!res.ok || !keys.apiKey) throw new Error(keys.error || `HTTP ${res.status}`);
 
