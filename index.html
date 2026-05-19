@@ -229,9 +229,18 @@ async function doLogin() {
 }
 
 async function loginMetaMask() {
-  if (!window.ethereum) { showError('MetaMask не найден. Установи расширение.'); return; }
   const btn = document.getElementById('metamask-btn');
   const errReset = () => { btn.disabled = false; btn.innerHTML = '🦊 Войти через MetaMask'; };
+  if (!window.ethereum) {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      btn.textContent = '🦊 Открываю MetaMask...';
+      window.location.href = 'https://metamask.app.link/dapp/maidive.github.io/polymar';
+      return;
+    }
+    showError('MetaMask не найден. Установи расширение.');
+    return;
+  }
   document.getElementById('login-err').style.display = 'none';
   btn.disabled = true; btn.textContent = '🦊 Подключаю...';
   try {
@@ -532,6 +541,11 @@ function renderHistory() {
     document.getElementById('inp-addr').value = saved.address || '';
     document.getElementById('inp-key').value  = saved.apiKey  || '';
     showBot();
+  }
+  // Hint for mobile users without injected provider
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile && !window.ethereum) {
+    document.getElementById('metamask-btn').innerHTML = '🦊 Открыть в MetaMask';
   }
 })();
 </script>
