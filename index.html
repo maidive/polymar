@@ -378,24 +378,30 @@ async function showBot() {
 }
 
 async function loadBalance() {
+  const chip = document.getElementById('balance-chip');
   try {
     if (creds.secret) {
-      // Authenticated CLOB balance (real USDC cash)
       const res = await proxyGet('balance');
-      if (!res.ok) return;
       const d = await res.json();
+      if (!res.ok) { chip.textContent = '$?'; return; }
       const amt = d.balance ?? d.USDC ?? d.value ?? 0;
-      document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
+      chip.textContent = '$' + parseFloat(amt).toFixed(2);
     } else {
-      // Portfolio positions value via data-api (may show 0 for empty positions)
-      const path = encodeURIComponent('value?user=' + creds.address);
-      const res = await fetch(`${PROXY}/api/proxy?path=${path}&api=data`);
-      if (!res.ok) return;
-      const d = await res.json();
-      const amt = Array.isArray(d) ? (d[0]?.value ?? 0) : (d?.value ?? 0);
-      document.getElementById('balance-chip').textContent = '$' + parseFloat(amt).toFixed(2);
+      // No HMAC credentials — read USDC.e balance directly from Polygon RPC
+      const USDC_POLYGON = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+      const calldata = '0x70a08231' + creds.address.slice(2).padStart(64, '0');
+      const rpcRes = await fetch('https://polygon-rpc.com/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_call', params: [{ to: USDC_POLYGON, data: calldata }, 'latest'], id: 1 })
+      });
+      const { result } = await rpcRes.json();
+      const amt = parseInt(result || '0x0', 16) / 1e6;
+      chip.textContent = '$' + amt.toFixed(2);
     }
-  } catch(e) {}
+  } catch(e) {
+    chip.textContent = '$—';
+  }
 }
 
 async function loadMarkets() {
