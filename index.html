@@ -547,7 +547,8 @@ function normalizeGamma(m) {
   try { tokenIds = JSON.parse(m.clobTokenIds || '[]'); } catch(e) {}
   let prices = [];
   try { prices = JSON.parse(m.outcomePrices || '[]'); } catch(e) {}
-  const outcomes = m.outcomes || ['Yes', 'No'];
+  let outcomes = ['Yes', 'No'];
+  try { outcomes = JSON.parse(m.outcomes || '["Yes","No"]'); } catch(e) {}
   return {
     condition_id: m.conditionId || String(m.id),
     question: m.question,
