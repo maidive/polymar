@@ -235,7 +235,7 @@ async function loginMetaMask() {
   btn.disabled = true; btn.textContent = '🦊 Подключаю...';
   try {
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    const address  = accounts[0].toLowerCase();
+    const address  = accounts[0]; // keep checksummed (EIP-55) as MetaMask returns it
 
     // Switch to Polygon (chainId 137) — required for CLOB auth
     try {
@@ -271,14 +271,20 @@ async function loginMetaMask() {
           { name: 'version', type: 'string'  },
           { name: 'chainId', type: 'uint256' }
         ],
-        ClobAuthMsg: [
+        ClobAuth: [
           { name: 'address',   type: 'address' },
           { name: 'timestamp', type: 'string'  },
-          { name: 'nonce',     type: 'uint256' }
+          { name: 'nonce',     type: 'uint256' },
+          { name: 'message',   type: 'string'  }
         ]
       },
-      primaryType: 'ClobAuthMsg',
-      message: { address, timestamp, nonce }
+      primaryType: 'ClobAuth',
+      message: {
+        address,
+        timestamp,
+        nonce,
+        message: 'This message attests that I control the given wallet'
+      }
     });
 
     btn.textContent = '🦊 Подпиши в MetaMask...';
@@ -290,7 +296,7 @@ async function loginMetaMask() {
     btn.textContent = '🦊 Получаю ключи...';
     const params = new URLSearchParams({
       path: 'auth/api-key',
-      address,
+      address: address.toLowerCase(),
       l1sig: signature,
       l1ts: timestamp,
       l1nonce: nonce.toString()
