@@ -395,6 +395,43 @@ async function debugBalance() {
   alert(info);
 }
 
+async function fetchBalanceWS() {
+  return new Promise(async (resolve) => {
+    const timeout = setTimeout(() => { try { ws.close(); } catch(e){} resolve(null); }, 6000);
+    let ws;
+    try {
+      const ts  = String(Math.floor(Date.now() / 1000));
+      const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/ws/user');
+      ws = new WebSocket('wss://ws-subscriptions-clob.polymarket.com/ws/user');
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          auth: { apiKey: creds.apiKey, secret: creds.secret,
+                  passphrase: creds.passphrase, timestamp: ts, signature: sig },
+          type: 'subscribe', channel: 'user',
+          markets: [], assets_ids: []
+        }));
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const msgs = JSON.parse(e.data);
+          const list = Array.isArray(msgs) ? msgs : [msgs];
+          for (const m of list) {
+            const bal = m.balance ?? m.cash_balance ?? m.usdc_balance ?? m.USDC;
+            if (bal != null) {
+              clearTimeout(timeout); ws.close(); resolve(bal); return;
+            }
+          }
+        } catch(err) {}
+      };
+
+      ws.onerror = () => { clearTimeout(timeout); resolve(null); };
+      ws.onclose = () => { clearTimeout(timeout); resolve(null); };
+    } catch(e) { clearTimeout(timeout); resolve(null); }
+  });
+}
+
 async function loadBalance() {
   const chip = document.getElementById('balance-chip');
   chip.title = 'Баланс Polymarket (USDC депозит)';
@@ -405,20 +442,16 @@ async function loadBalance() {
     return;
   }
 
-  // Правильный endpoint: /balance_allowance (не /balance — его не существует)
-  try {
-    const res = await proxyGet('balance_allowance?asset_type=USDC');
-    const d = await res.json();
-    if (res.ok) {
-      const amt = d.balance ?? d.allowance ?? d.amount ?? d.USDC ?? 0;
-      chip.textContent = '$' + parseFloat(amt).toFixed(2);
-      return;
-    }
-  } catch(e) {}
+  // WebSocket User Channel — CF пропускает WS иначе чем HTTP
+  const wsBalance = await fetchBalanceWS();
+  if (wsBalance !== null) {
+    chip.textContent = '$' + parseFloat(wsBalance).toFixed(2);
+    return;
+  }
 
-  // Fallback: без фильтра по asset_type
+  // Fallback: proxy (для не-CF сред)
   try {
-    const res = await proxyGet('balance_allowance');
+    const res = await proxyGet('balance_allowance?asset_type=USDC&asset_address=0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174');
     const d = await res.json();
     if (res.ok) {
       const amt = d.balance ?? d.allowance ?? 0;
