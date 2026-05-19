@@ -1,89 +1,81 @@
-import crypto from 'crypto';
+export const config = { runtime: 'edge' };
 
-function hmacSHA256(secret, message) {
-  const keyBuffer = Buffer.from(secret, 'base64');
-  return crypto.createHmac('sha256', keyBuffer).update(message).digest('base64');
+async function hmac(secret, message) {
+  const keyBytes = Uint8Array.from(atob(secret), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey(
+    'raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+export default async function handler(req) {
+  const cors = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': '*',
+  };
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
-  const { path, api } = req.query;
-  if (!path) return res.status(400).json({ error: 'No path provided' });
+  const url     = new URL(req.url);
+  const path    = url.searchParams.get('path');
+  const api     = url.searchParams.get('api');
 
-  const decodedPath = decodeURIComponent(Array.isArray(path) ? path.join('/') : path);
-  
-  // api=data uses Data API, default is CLOB API
-  const baseUrl = api === 'data' 
-    ? 'https://data-api.polymarket.com/' 
-    : 'https://clob.polymarket.com/';
-  
-  const url = baseUrl + decodedPath;
+  if (!path) return new Response(JSON.stringify({ error: 'No path' }), { status: 400, headers: cors });
 
-  let credentials = null;
-  let bodyToForward = undefined;
+  const decoded = decodeURIComponent(path);
+  const base    = api === 'data' ? 'https://data-api.polymarket.com/' : 'https://clob.polymarket.com/';
+  const target  = base + decoded;
 
-  if (req.method === 'POST' && req.body) {
-    const { _creds, ...rest } = req.body;
-    credentials = _creds || null;
-    bodyToForward = Object.keys(rest).length > 0 ? JSON.stringify(rest) : undefined;
-  }
+  const apiKey     = url.searchParams.get('apiKey');
+  const secret     = url.searchParams.get('secret');
+  const passphrase = url.searchParams.get('passphrase');
+  const address    = url.searchParams.get('address');
 
-  const { apiKey, secret, passphrase, address } = req.query;
-  if (!credentials && apiKey && secret && passphrase && address) {
-    credentials = { apiKey, secret, passphrase, address };
+  let bodyText = undefined;
+  if (req.method === 'POST') bodyText = await req.text();
+
+  let forwardBody = bodyText;
+  if (bodyText) {
+    try {
+      const { _creds, ...rest } = JSON.parse(bodyText);
+      forwardBody = Object.keys(rest).length ? JSON.stringify(rest) : undefined;
+    } catch(e) {}
   }
 
   const headers = {
     'Content-Type': 'application/json',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.9',
     'Origin': 'https://polymarket.com',
     'Referer': 'https://polymarket.com/',
   };
 
-  // L1 auth: pre-computed EIP-712 signature from MetaMask
-  const { l1sig, l1ts, l1nonce } = req.query;
-  if (l1sig && req.query.address) {
-    headers['POLY_ADDRESS']   = req.query.address;
-    headers['POLY_SIGNATURE'] = l1sig;
-    headers['POLY_TIMESTAMP'] = l1ts;
-    headers['POLY_NONCE']     = l1nonce || '0';
-  } else if (credentials) {
-    // L2 auth: HMAC-SHA256 signing
-    const { apiKey: key, secret: sec, passphrase: pass, address: addr } = credentials;
-    const ts = Math.floor(Date.now() / 1000).toString();
-    const bodyStr = bodyToForward || '';
-    const message = ts + req.method.toUpperCase() + '/' + decodedPath + bodyStr;
-    const signature = hmacSHA256(sec, message);
+  if (apiKey && secret && passphrase && address) {
+    const ts      = Math.floor(Date.now() / 1000).toString();
+    const bodyStr = forwardBody || '';
+    const message = ts + req.method + '/' + decoded + bodyStr;
+    const sig     = await hmac(secret, message);
 
-    headers['POLY_ADDRESS']    = addr;
-    headers['POLY_API_KEY']    = key;
-    headers['POLY_SIGNATURE']  = signature;
+    headers['POLY_ADDRESS']    = address;
+    headers['POLY_API_KEY']    = apiKey;
+    headers['POLY_SIGNATURE']  = sig;
     headers['POLY_TIMESTAMP']  = ts;
-    headers['POLY_PASSPHRASE'] = pass;
+    headers['POLY_PASSPHRASE'] = passphrase;
   }
 
-  try {
-    const fetchOptions = { method: req.method, headers };
-    if (bodyToForward) fetchOptions.body = bodyToForward;
+  const opts = { method: req.method, headers };
+  if (forwardBody) opts.body = forwardBody;
 
-    const r = await fetch(url, fetchOptions);
-    const contentType = r.headers.get('content-type') || '';
+  const r    = await fetch(target, opts);
+  const body = await r.text();
 
-    if (contentType.includes('application/json')) {
-      const d = await r.json();
-      return res.status(r.status).json(d);
-    } else {
-      const text = await r.text();
-      return res.status(r.status).json({ error: 'Non-JSON response', body: text.slice(0, 500) });
-    }
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
+  return new Response(body, {
+    status: r.status,
+    headers: {
+      ...cors,
+      'Content-Type': r.headers.get('Content-Type') || 'application/json',
+    },
+  });
 }
