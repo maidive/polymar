@@ -381,64 +381,45 @@ async function showBot() {
 
 async function loadBalance() {
   const chip = document.getElementById('balance-chip');
+  chip.title = 'Баланс Polymarket (USDC депозит)';
 
-  if (creds.secret) {
-    // 1a. Direct browser HMAC → clob.polymarket.com (no proxy, minimal latency)
-    try {
-      const ts = String(Math.floor(Date.now() / 1000));
-      const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance');
-      const res = await fetch('https://clob.polymarket.com/balance', {
-        headers: {
-          'POLY_ADDRESS':    creds.address,
-          'POLY_API_KEY':    creds.apiKey,
-          'POLY_SIGNATURE':  sig,
-          'POLY_TIMESTAMP':  ts,
-          'POLY_PASSPHRASE': creds.passphrase
-        }
-      });
-      const d = await res.json();
-      if (res.ok && d.balance != null) {
-        chip.textContent = '$' + parseFloat(d.balance).toFixed(2);
-        return;
-      }
-    } catch(e) {}
-
-    // 1b. Proxy fallback (HMAC via Vercel)
-    try {
-      const res = await proxyGet('balance');
-      const d = await res.json();
-      if (res.ok && d.balance != null) {
-        chip.textContent = '$' + parseFloat(d.balance).toFixed(2);
-        return;
-      }
-    } catch(e) {}
-  } else {
-    // No secret — must re-login via MetaMask to get CLOB balance
+  if (!creds.secret) {
     chip.textContent = '↻ войди';
-    chip.title = 'Войди через MetaMask для показа баланса';
+    chip.title = 'Войди через MetaMask для показа баланса Polymarket';
     return;
   }
 
-  // 2. Polygon RPC — проверяем оба USDC контракта
+  // Прямой вызов CLOB из браузера (без proxy)
   try {
-    const addr = creds.address.slice(2).padStart(64, '0');
-    const calldata = '0x70a08231' + addr;
-    const rpc = 'https://rpc-mainnet.matic.quiknode.pro/';
-    const call = (to) => fetch(rpc, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_call', params: [{ to, data: calldata }, 'latest'], id: 1 })
-    }).then(r => r.json()).then(j => parseInt(j.result || '0x0', 16) / 1e6);
+    const ts = String(Math.floor(Date.now() / 1000));
+    const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance');
+    const res = await fetch('https://clob.polymarket.com/balance', {
+      headers: {
+        'POLY_ADDRESS':    creds.address,
+        'POLY_API_KEY':    creds.apiKey,
+        'POLY_SIGNATURE':  sig,
+        'POLY_TIMESTAMP':  ts,
+        'POLY_PASSPHRASE': creds.passphrase
+      }
+    });
+    const d = await res.json();
+    if (res.ok && d.balance != null) {
+      chip.textContent = '$' + parseFloat(d.balance).toFixed(2);
+      return;
+    }
+  } catch(e) {}
 
-    const [native, bridged] = await Promise.all([
-      call('0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'), // Native USDC
-      call('0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174')  // USDC.e (bridged)
-    ]);
-    const total = native + bridged;
-    chip.textContent = '$' + total.toFixed(2);
-  } catch(e) {
-    chip.textContent = '$—';
-  }
+  // Fallback: proxy (если CORS заблокировал прямой вызов)
+  try {
+    const res = await proxyGet('balance');
+    const d = await res.json();
+    if (res.ok && d.balance != null) {
+      chip.textContent = '$' + parseFloat(d.balance).toFixed(2);
+      return;
+    }
+  } catch(e) {}
+
+  chip.textContent = '$—';
 }
 
 async function loadMarkets() {
