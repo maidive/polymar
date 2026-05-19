@@ -34,7 +34,14 @@ export default {
       } catch(e) {}
     }
 
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Origin': 'https://polymarket.com',
+      'Referer': 'https://polymarket.com/',
+    };
 
     if (apiKey && secret && passphrase && address) {
       const ts      = Math.floor(Date.now() / 1000).toString();
