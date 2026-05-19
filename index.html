@@ -493,7 +493,7 @@ async function loadBalance() {
 
 async function loadMarkets() {
   try {
-    const res = await fetch('https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=50&order=volume24hr&ascending=false');
+    const res = await fetch('https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=50');
     const data = await res.json();
     allMarkets = (Array.isArray(data) ? data : []).map(normalizeGamma);
     renderMarkets(allMarkets);
