@@ -266,11 +266,6 @@ async function loginMetaMask() {
     const typedData = JSON.stringify({
       domain: { name: 'ClobAuthDomain', version: '1', chainId: 137 },
       types: {
-        EIP712Domain: [
-          { name: 'name',    type: 'string'  },
-          { name: 'version', type: 'string'  },
-          { name: 'chainId', type: 'uint256' }
-        ],
         ClobAuth: [
           { name: 'address',   type: 'address' },
           { name: 'timestamp', type: 'string'  },
