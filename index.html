@@ -344,13 +344,13 @@ async function proxyPost(path, body, c = creds) {
 }
 
 async function hmacBrowser(secret, message) {
-  const enc = new TextEncoder();
+  const keyBytes = Uint8Array.from(atob(secret), c => c.charCodeAt(0));
   const key = await crypto.subtle.importKey(
-    'raw', enc.encode(secret),
+    'raw', keyBytes,
     { name: 'HMAC', hash: 'SHA-256' },
     false, ['sign']
   );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
@@ -379,26 +379,29 @@ async function showBot() {
 
 async function loadBalance() {
   const chip = document.getElementById('balance-chip');
-  try {
-    if (creds.secret) {
+  // Try CLOB balance (requires HMAC credentials)
+  if (creds.secret) {
+    try {
       const res = await proxyGet('balance');
       const d = await res.json();
-      if (!res.ok) { chip.textContent = 'E' + res.status; return; }
-      const amt = d.balance ?? d.USDC ?? d.value ?? 0;
-      chip.textContent = '$' + parseFloat(amt).toFixed(2);
-    } else {
-      // No HMAC credentials — read USDC.e balance directly from Polygon RPC
-      const USDC_POLYGON = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
-      const calldata = '0x70a08231' + creds.address.slice(2).padStart(64, '0');
-      const rpcRes = await fetch('https://polygon-rpc.com/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_call', params: [{ to: USDC_POLYGON, data: calldata }, 'latest'], id: 1 })
-      });
-      const { result } = await rpcRes.json();
-      const amt = parseInt(result || '0x0', 16) / 1e6;
-      chip.textContent = '$' + amt.toFixed(2);
-    }
+      if (res.ok) {
+        const amt = d.balance ?? d.USDC ?? d.value ?? 0;
+        chip.textContent = '$' + parseFloat(amt).toFixed(2);
+        return;
+      }
+    } catch(e) {}
+  }
+  // Fallback: read USDC.e balance directly from Polygon blockchain
+  try {
+    const USDC = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+    const data = '0x70a08231' + creds.address.slice(2).padStart(64, '0');
+    const r = await fetch('https://polygon-rpc.com/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_call', params: [{ to: USDC, data }, 'latest'], id: 1 })
+    });
+    const { result } = await r.json();
+    chip.textContent = '$' + (parseInt(result || '0x0', 16) / 1e6).toFixed(2);
   } catch(e) {
     chip.textContent = '$—';
   }

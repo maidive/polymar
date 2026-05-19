@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 
 function hmacSHA256(secret, message) {
-  return crypto.createHmac('sha256', secret).update(message).digest('base64');
+  const keyBuffer = Buffer.from(secret, 'base64');
+  return crypto.createHmac('sha256', keyBuffer).update(message).digest('base64');
 }
 
 export default async function handler(req, res) {
