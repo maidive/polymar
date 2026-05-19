@@ -421,20 +421,30 @@ async function debugBalance() {
 }
 
 async function fetchWalletUSDC(address) {
-  const rpc = 'https://rpc-mainnet.matic.quiknode.pro';
+  const rpcs = [
+    'https://polygon.llamarpc.com',
+    'https://rpc.ankr.com/polygon',
+    'https://1rpc.io/matic',
+  ];
   const tokens = [
     '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', // Native USDC
     '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'  // USDC.e
   ];
-  const call = (to) => ({
+  const callBody = (to) => JSON.stringify({
     jsonrpc: '2.0', id: 1, method: 'eth_call',
     params: [{ to, data: '0x70a08231' + address.replace('0x','').padStart(64,'0') }, 'latest']
   });
-  const results = await Promise.all(tokens.map(t =>
-    fetch(rpc, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(call(t)) })
-      .then(r => r.json()).then(j => j.result ? parseInt(j.result,16)/1e6 : 0).catch(() => 0)
-  ));
-  return results.reduce((a,b) => a+b, 0);
+  // Try each RPC until one works
+  for (const rpc of rpcs) {
+    try {
+      const results = await Promise.all(tokens.map(t =>
+        fetch(rpc, { method: 'POST', headers: {'Content-Type':'application/json'}, body: callBody(t) })
+          .then(r => r.json()).then(j => j.result ? parseInt(j.result,16)/1e6 : 0)
+      ));
+      return results.reduce((a,b) => a+b, 0);
+    } catch(e) { continue; }
+  }
+  return null;
 }
 
 async function loadBalance() {
@@ -457,18 +467,16 @@ async function loadBalance() {
     }
   } catch(e) {}
 
-  // Fallback: баланс кошелька USDC (Polygon RPC, всегда работает)
-  try {
-    const wBal = await fetchWalletUSDC(creds.address);
-    chip.textContent = '$' + wBal.toFixed(2);
-    chip.title = cfWorkerUrl
-      ? 'Баланс кошелька USDC (ошибка CLOB)'
-      : 'Баланс кошелька USDC. Для депозита Polymarket — задеплой CF Worker → ⚙';
+  // Fallback: баланс кошелька USDC (Polygon RPC)
+  const wBal = await fetchWalletUSDC(creds.address);
+  if (wBal !== null) {
+    chip.textContent = 'w$' + wBal.toFixed(2);
+    chip.title = 'Кошелёк USDC (не CLOB депозит). Задеплой CF Worker → ⚙';
     return;
-  } catch(e) {}
+  }
 
   chip.textContent = '$—';
-  chip.title = cfWorkerUrl ? 'Ошибка' : 'Задеплой CF Worker → ⚙';
+  chip.title = 'Ошибка. Задеплой CF Worker → ⚙';
 }
 
 async function loadMarkets() {
