@@ -11,11 +11,17 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { path } = req.query;
+  const { path, api } = req.query;
   if (!path) return res.status(400).json({ error: 'No path provided' });
 
   const decodedPath = decodeURIComponent(Array.isArray(path) ? path.join('/') : path);
-  const url = 'https://clob.polymarket.com/' + decodedPath;
+
+  // api=data uses Data API, default is CLOB API
+  const baseUrl = api === 'data'
+    ? 'https://data-api.polymarket.com/'
+    : 'https://clob.polymarket.com/';
+
+  const url = baseUrl + decodedPath;
 
   let credentials = null;
   let bodyToForward = undefined;
@@ -33,17 +39,25 @@ export default async function handler(req, res) {
 
   const headers = { 'Content-Type': 'application/json' };
 
-  if (credentials) {
+  // L1 auth: pre-computed EIP-712 signature from MetaMask
+  const { l1sig, l1ts, l1nonce } = req.query;
+  if (l1sig && req.query.address) {
+    headers['POLY_ADDRESS']   = req.query.address;
+    headers['POLY_SIGNATURE'] = l1sig;
+    headers['POLY_TIMESTAMP'] = l1ts;
+    headers['POLY_NONCE']     = l1nonce || '0';
+  } else if (credentials) {
+    // L2 auth: HMAC-SHA256 signing
     const { apiKey: key, secret: sec, passphrase: pass, address: addr } = credentials;
     const ts = Math.floor(Date.now() / 1000).toString();
     const bodyStr = bodyToForward || '';
     const message = ts + req.method.toUpperCase() + '/' + decodedPath + bodyStr;
     const signature = hmacSHA256(sec, message);
 
-    headers['POLY_ADDRESS'] = addr;
-    headers['POLY_API_KEY'] = key;
-    headers['POLY_SIGNATURE'] = signature;
-    headers['POLY_TIMESTAMP'] = ts;
+    headers['POLY_ADDRESS']    = addr;
+    headers['POLY_API_KEY']    = key;
+    headers['POLY_SIGNATURE']  = signature;
+    headers['POLY_TIMESTAMP']  = ts;
     headers['POLY_PASSPHRASE'] = pass;
   }
 
