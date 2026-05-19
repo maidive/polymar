@@ -236,26 +236,6 @@ async function loginMetaMask() {
   try {
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     const address  = accounts[0].toLowerCase();
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const nonce = 0;
-
-    const typedData = JSON.stringify({
-      domain: { name: 'ClobAuthDomain', version: '1', chainId: '137' },
-      types: {
-        EIP712Domain: [
-          { name: 'name',    type: 'string'  },
-          { name: 'version', type: 'string'  },
-          { name: 'chainId', type: 'uint256' }
-        ],
-        ClobAuthMsg: [
-          { name: 'address',   type: 'address' },
-          { name: 'timestamp', type: 'string'  },
-          { name: 'nonce',     type: 'uint256' }
-        ]
-      },
-      primaryType: 'ClobAuthMsg',
-      message: { address, timestamp, nonce }
-    });
 
     // Switch to Polygon (chainId 137) — required for CLOB auth
     try {
@@ -279,6 +259,27 @@ async function loginMetaMask() {
         throw switchErr;
       }
     }
+
+    // Build typed data after chain switch so timestamp is fresh
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = 0;
+    const typedData = JSON.stringify({
+      domain: { name: 'ClobAuthDomain', version: '1', chainId: 137 },
+      types: {
+        EIP712Domain: [
+          { name: 'name',    type: 'string'  },
+          { name: 'version', type: 'string'  },
+          { name: 'chainId', type: 'uint256' }
+        ],
+        ClobAuthMsg: [
+          { name: 'address',   type: 'address' },
+          { name: 'timestamp', type: 'string'  },
+          { name: 'nonce',     type: 'uint256' }
+        ]
+      },
+      primaryType: 'ClobAuthMsg',
+      message: { address, timestamp, nonce }
+    });
 
     btn.textContent = '🦊 Подпиши в MetaMask...';
     const signature = await window.ethereum.request({
