@@ -166,7 +166,7 @@
   <div class="top-bar">
     <h1>Polybot</h1>
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="balance-chip mono" id="balance-chip">$—</div>
+      <div class="balance-chip mono" id="balance-chip" onclick="loadBalance()" title="Нажми для обновления" style="cursor:pointer">$—</div>
       <button class="logout-btn" onclick="doLogout()">выйти</button>
     </div>
   </div>
@@ -379,25 +379,45 @@ async function showBot() {
 
 async function loadBalance() {
   const chip = document.getElementById('balance-chip');
-  // 1. CLOB balance (HMAC auth)
+
   if (creds.secret) {
+    // 1a. Direct browser HMAC → clob.polymarket.com (no proxy, minimal latency)
     try {
-      const res = await proxyGet('balance');
+      const ts = String(Math.floor(Date.now() / 1000));
+      const sig = await hmacBrowser(creds.secret, ts + 'GET' + '/balance');
+      const res = await fetch('https://clob.polymarket.com/balance', {
+        headers: {
+          'POLY_ADDRESS':    creds.address,
+          'POLY_API_KEY':    creds.apiKey,
+          'POLY_SIGNATURE':  sig,
+          'POLY_TIMESTAMP':  ts,
+          'POLY_PASSPHRASE': creds.passphrase
+        }
+      });
       const d = await res.json();
-      if (res.ok && (d.balance != null || d.USDC != null || d.value != null)) {
-        chip.textContent = '$' + parseFloat(d.balance ?? d.USDC ?? d.value).toFixed(2);
+      if (res.ok && d.balance != null) {
+        chip.textContent = '$' + parseFloat(d.balance).toFixed(2);
         return;
       }
     } catch(e) {}
+
+    // 1b. Proxy fallback (HMAC via Vercel)
+    try {
+      const res = await proxyGet('balance');
+      const d = await res.json();
+      if (res.ok && d.balance != null) {
+        chip.textContent = '$' + parseFloat(d.balance).toFixed(2);
+        return;
+      }
+    } catch(e) {}
+  } else {
+    // No secret — must re-login via MetaMask to get CLOB balance
+    chip.textContent = '↻ войди';
+    chip.title = 'Войди через MetaMask для показа баланса';
+    return;
   }
-  // 2. Data API portfolio value
-  try {
-    const r = await fetch(`https://data-api.polymarket.com/portfolio?user_id=${creds.address}`);
-    const d = await r.json();
-    const amt = d?.portfolio_value ?? d?.value ?? d?.balance;
-    if (amt != null) { chip.textContent = '$' + parseFloat(amt).toFixed(2); return; }
-  } catch(e) {}
-  // 3. Polygon RPC — wallet USDC.e
+
+  // 2. Polygon RPC — wallet USDC.e (last resort)
   try {
     const USDC = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
     const data = '0x70a08231' + creds.address.slice(2).padStart(64, '0');
