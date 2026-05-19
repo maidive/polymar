@@ -88,9 +88,10 @@
   }
   .market-card:hover, .market-card.active { border-color: var(--accent); background: var(--surface2); }
   .market-q { font-size: 14px; font-weight: 500; margin-bottom: 8px; line-height: 1.4; }
-  .market-prices { display: flex; gap: 8px; }
+  .market-prices { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .price-yes { background: rgba(34,197,94,.12); color: var(--green); border-radius: 6px; padding: 3px 10px; font-size: 12px; font-family: 'DM Mono', monospace; }
   .price-no  { background: rgba(239,68,68,.12);  color: var(--red);   border-radius: 6px; padding: 3px 10px; font-size: 12px; font-family: 'DM Mono', monospace; }
+  .market-meta { font-size: 11px; color: var(--muted); margin-left: auto; font-family: 'DM Mono', monospace; }
 
   #bet-panel {
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
@@ -206,6 +207,7 @@ let allMarkets = [];
 let selectedMarket = null;
 let selectedSide = null;
 let betHistory = [];
+let searchTimer = null;
 
 function loadCreds() {
   try { const s = localStorage.getItem('poly_creds'); if (s) return JSON.parse(s); } catch(e) {}
@@ -458,20 +460,55 @@ function renderMarkets(list, isSearch = false) {
     const tokens = m.tokens || [];
     const yes = tokens.find(t => t.outcome === 'Yes') || tokens[0] || {};
     const no  = tokens.find(t => t.outcome === 'No')  || tokens[1] || {};
+    const vol = m.volume ? '$' + (m.volume >= 1e6 ? (m.volume/1e6).toFixed(1)+'M' : m.volume >= 1e3 ? (m.volume/1e3).toFixed(0)+'K' : m.volume.toFixed(0)) : '';
+    const end = m.endDate ? new Date(m.endDate).toLocaleDateString('ru-RU', {day:'numeric', month:'short'}) : '';
     return `<div class="market-card" onclick="selectMarket('${m.condition_id}', this)">
       <div class="market-q">${m.question}</div>
       <div class="market-prices">
         <span class="price-yes">YES ${yes.price != null ? (yes.price*100).toFixed(0)+'¢' : '—'}</span>
         <span class="price-no">NO ${no.price != null ? (no.price*100).toFixed(0)+'¢' : '—'}</span>
+        ${vol || end ? `<span class="market-meta">${[vol, end].filter(Boolean).join(' · ')}</span>` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
 function filterMarkets() {
-  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  const q = document.getElementById('search-input').value.trim();
+  clearTimeout(searchTimer);
   if (!q) { renderMarkets(allMarkets); return; }
-  renderMarkets(allMarkets.filter(m => m.question.toLowerCase().includes(q)), true);
+  // Instant local filter
+  renderMarkets(allMarkets.filter(m => m.question.toLowerCase().includes(q.toLowerCase())), true);
+  // Debounced Gamma API search (300ms)
+  searchTimer = setTimeout(() => searchGamma(q), 300);
+}
+
+async function searchGamma(q) {
+  try {
+    const r = await fetch(`https://gamma-api.polymarket.com/markets?q=${encodeURIComponent(q)}&active=true&closed=false&limit=30`);
+    const data = await r.json();
+    const markets = (Array.isArray(data) ? data : []).map(normalizeGamma);
+    if (markets.length) renderMarkets(markets, true);
+  } catch(e) {}
+}
+
+function normalizeGamma(m) {
+  let tokenIds = [];
+  try { tokenIds = JSON.parse(m.clobTokenIds || '[]'); } catch(e) {}
+  let prices = [];
+  try { prices = JSON.parse(m.outcomePrices || '[]'); } catch(e) {}
+  const outcomes = m.outcomes || ['Yes', 'No'];
+  return {
+    condition_id: m.conditionId || String(m.id),
+    question: m.question,
+    volume: m.volume,
+    endDate: m.endDate,
+    tokens: outcomes.map((o, i) => ({
+      outcome: o,
+      price: parseFloat(prices[i] || 0.5),
+      token_id: tokenIds[i] || ''
+    }))
+  };
 }
 
 function selectMarket(condId, el) {
