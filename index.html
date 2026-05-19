@@ -257,6 +257,29 @@ async function loginMetaMask() {
       message: { address, timestamp, nonce }
     });
 
+    // Switch to Polygon (chainId 137) — required for CLOB auth
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x89' }]
+      });
+    } catch (switchErr) {
+      if (switchErr.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x89',
+            chainName: 'Polygon Mainnet',
+            nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+            rpcUrls: ['https://polygon-rpc.com/'],
+            blockExplorerUrls: ['https://polygonscan.com/']
+          }]
+        });
+      } else {
+        throw switchErr;
+      }
+    }
+
     btn.textContent = '🦊 Подпиши в MetaMask...';
     const signature = await window.ethereum.request({
       method: 'eth_signTypedData_v4',
