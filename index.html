@@ -379,19 +379,25 @@ async function showBot() {
 
 async function loadBalance() {
   const chip = document.getElementById('balance-chip');
-  // Try CLOB balance (requires HMAC credentials)
+  // 1. CLOB balance (HMAC auth)
   if (creds.secret) {
     try {
       const res = await proxyGet('balance');
       const d = await res.json();
-      if (res.ok) {
-        const amt = d.balance ?? d.USDC ?? d.value ?? 0;
-        chip.textContent = '$' + parseFloat(amt).toFixed(2);
+      if (res.ok && (d.balance != null || d.USDC != null || d.value != null)) {
+        chip.textContent = '$' + parseFloat(d.balance ?? d.USDC ?? d.value).toFixed(2);
         return;
       }
     } catch(e) {}
   }
-  // Fallback: read USDC.e balance directly from Polygon blockchain
+  // 2. Data API portfolio value
+  try {
+    const r = await fetch(`https://data-api.polymarket.com/portfolio?user_id=${creds.address}`);
+    const d = await r.json();
+    const amt = d?.portfolio_value ?? d?.value ?? d?.balance;
+    if (amt != null) { chip.textContent = '$' + parseFloat(amt).toFixed(2); return; }
+  } catch(e) {}
+  // 3. Polygon RPC — wallet USDC.e
   try {
     const USDC = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
     const data = '0x70a08231' + creds.address.slice(2).padStart(64, '0');
