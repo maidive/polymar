@@ -300,16 +300,21 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 .qb-player{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:background .2s,opacity .2s;user-select:none;-webkit-user-select:none;position:relative;gap:12px}
 .qb-player.L{background:rgba(16,185,129,.04)}
 .qb-player.R{background:rgba(244,63,94,.04)}
-.qb-player.selected.L{background:rgba(16,185,129,.18)}
-.qb-player.selected.R{background:rgba(244,63,94,.18)}
-.qb-player.dimmed{opacity:.2;pointer-events:none}
-@keyframes qflash{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
+.qb-player.selected.L{background:rgba(16,185,129,.25);border-right:2px solid var(--yes)}
+.qb-player.selected.R{background:rgba(244,63,94,.25);border-left:2px solid var(--no)}
+.qb-player.dimmed{opacity:.15;pointer-events:none}
+@keyframes qflash{0%{transform:scale(1)}40%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes qexpand{0%{flex:1}100%{flex:3}}
+.qb-player.selected{animation:qexpand .15s ease forwards}
 .qb-player.selected .qb-name{animation:qflash .35s ease}
+.qb-player.dimmed{flex:0.3!important;transition:flex .15s ease}
 .qb-name{font-size:20px;font-weight:900;text-align:center;padding:0 16px;line-height:1.2;letter-spacing:-.02em;text-transform:uppercase}
 .qb-player.L .qb-name{color:var(--yes)}.qb-player.R .qb-name{color:var(--no)}
+.qb-player.selected.L .qb-name{color:#fff;text-shadow:0 0 30px rgba(16,185,129,.8)}
+.qb-player.selected.R .qb-name{color:#fff;text-shadow:0 0 30px rgba(244,63,94,.8)}
 .qb-side-label{font-size:11px;font-family:var(--mono);color:var(--t3);letter-spacing:.05em}
 .qb-player.L .qb-side-label{color:rgba(16,185,129,.6)}.qb-player.R .qb-side-label{color:rgba(244,63,94,.6)}
-.qb-status{font-size:12px;font-family:var(--mono);color:var(--t2);min-height:18px;text-align:center;padding:0 8px}
+.qb-status{font-size:13px;font-family:var(--mono);color:var(--t2);min-height:20px;text-align:center;padding:0 8px;font-weight:600}
 /* analytics overlay */
 #qanal{position:fixed;inset:0;display:none;flex-direction:column;z-index:91;background:var(--bg);max-width:500px;margin:0 auto}
 #qanal.on{display:flex}
@@ -1031,14 +1036,20 @@ function setQReady(ready){
 // ── TAP — INSTANT because order is pre-signed ─────────────────────────────
 async function quickBet(side){
   if(qLocked)return;
-  if(!qMkt||!creds?.secret){alert('Нужен аккаунт и API key');return;}
+  // Visual lock FIRST — always, before any checks
   qLocked=true;qBetSide=side;
   const t0=Date.now();qBetTime=t0;
   const other=1-side;
-  // Visual lock immediately
   $('qbp'+side).className='qb-player '+(side===0?'L':'R')+' selected';
   $('qbp'+other).className='qb-player '+(other===0?'L':'R')+' dimmed';
   $('qbst'+side).textContent='⚡';
+  // Haptic feedback on mobile
+  try{navigator.vibrate&&navigator.vibrate(30)}catch{}
+  // Auth check after visual
+  if(!qMkt||!creds?.secret){
+    $('qbst'+side).textContent='✗ Войди в аккаунт';
+    setTimeout(()=>qReset(),2000);return;
+  }
   // Record price at bet time
   const lastPt=qHistory.length?qHistory[qHistory.length-1]:null;
   qBetPrice=lastPt?lastPt.price:(qPre[side]?.price||0.5);
