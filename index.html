@@ -524,9 +524,9 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 <!-- ══ BATTLE OVERLAY ════════════════════════════════════════════════════ -->
 <div id="qbattle">
   <div class="qb-top">
-    <button class="qb-back" onclick="exitBattle()">← Назад</button>
-    <div class="qb-stake" id="qbstake" onclick="qEditStake()">$10</div>
-    <div class="qb-ws" id="qbws" title="WebSocket цен">○</div>
+    <button class="qb-back" onclick="exitBattle()">← Сменить</button>
+    <div class="qb-stake" id="qbstake" onclick="qEditStake()" title="Нажми чтобы изменить ставку">$10</div>
+    <div class="qb-ws" id="qbws" title="Статус: готов к ставке">○</div>
   </div>
   <div class="qb-arena">
     <div class="qb-player L" id="qbp0" onclick="quickBet(0)">
@@ -715,8 +715,19 @@ function startApp(){
   $('login').style.display='none';
   $('app').style.display='block';
   $('wb').style.display=wUrl?'none':'block';
-  loadHist();loadBal();loadMkts();
+  loadHist();loadBal();
   doPing();clearInterval(pitm);pitm=setInterval(doPing,8000);
+  // load markets, then restore battle if config saved
+  loadMkts().then(()=>{
+    if(qLoadConfig()){
+      // Sync qMkt tokens with fresh market data
+      const fresh=mkts.find(m=>m.condition_id===qMkt.condition_id);
+      if(fresh)qMkt=fresh;
+      tab('q');
+      // Auto-open battle screen directly
+      _openBattle();
+    }
+  });
 }
 
 // ── TABS ─────────────────────────────────────────────────────────────────
@@ -777,6 +788,7 @@ async function loadMkts(){
     mkts=(Array.isArray(d)?d:[]).map(norm);
     renderMkts(mkts);
   }catch{$('ml').innerHTML='<div class="empty" style="color:var(--no)">Ошибка загрузки рынков</div>'}
+  return mkts;
 }
 function renderMkts(list,srch=false){
   const el=$('ml'),cnt=$('scnt');
@@ -925,19 +937,39 @@ function saveW(){
 }
 
 // ── QUICK BET ────────────────────────────────────────────────────────────
+// STATE
 let qMkt=null,qAmt=10,qNames=['YES','NO'];
-let qLocked=false,qWs=null;
+let qLocked=false,qWs=null,qPsTimer=null;
 let qHistory=[],qBetTime=null,qBetPrice=null,qBetSide=null,qBetMs=null;
+// Pre-signed orders: [side0_url+body, side1_url+body] — ready BEFORE tap
+let qPre=[null,null];
 
+// ── PERSISTENCE ───────────────────────────────────────────────────────────
+function qSaveConfig(){
+  if(!qMkt)return;
+  localStorage.setItem('q_cfg',JSON.stringify({
+    mkt:qMkt,amt:qAmt,names:qNames
+  }));
+}
+function qLoadConfig(){
+  try{
+    const c=JSON.parse(localStorage.getItem('q_cfg')||'null');
+    if(!c)return false;
+    qMkt=c.mkt;qAmt=c.amt||10;qNames=c.names||['YES','NO'];
+    return true;
+  }catch{return false;}
+}
+
+// ── SETUP TAB ─────────────────────────────────────────────────────────────
 function qInitTab(){
   if(!$('qmlist').children.length)qDoSearch();
-  const w=$('qwarn');
-  w.style.display=(creds&&wallet)?'none':'block';
+  $('qwarn').style.display=(creds&&wallet)?'none':'block';
+  if(qMkt){$('qn0').value=qNames[0];$('qn1').value=qNames[1];$('qnrow').classList.add('on');}
 }
 
 function qSetAmt(v){
   qAmt=v;$('qamt').value=v;
-  document.querySelectorAll('.q-amt-btn').forEach(b=>{b.classList.toggle('on',b.textContent==='$'+v)});
+  document.querySelectorAll('.q-amt-btn').forEach(b=>b.classList.toggle('on',b.textContent==='$'+v));
 }
 
 function qDoSearch(){
@@ -946,8 +978,7 @@ function qDoSearch(){
   $('qmlist').innerHTML=list.slice(0,18).map(m=>{
     const toks=m.tokens||[];const yes=toks.find(t=>t.outcome==='Yes')||{};
     const yp=yes.price!=null?Math.round(yes.price*100):50;
-    const isSel=qMkt?.condition_id===m.condition_id;
-    return`<div class="qmc${isSel?' on':''}" onclick="qSelMkt('${m.condition_id}')">
+    return`<div class="qmc${qMkt?.condition_id===m.condition_id?' on':''}" onclick="qSelMkt('${m.condition_id}')">
       <div class="qmc-q">${m.question.slice(0,90)}</div>
       <div class="qmc-p">YES ${yp}¢ · NO ${100-yp}¢</div>
     </div>`;
@@ -978,81 +1009,109 @@ function startBattle(){
   qAmt=parseFloat($('qamt').value)||10;
   qNames[0]=($('qn0').value||'YES').trim().toUpperCase();
   qNames[1]=($('qn1').value||'NO').trim().toUpperCase();
+  qSaveConfig();
+  _openBattle();
+}
+
+function _openBattle(){
   $('qbn0').textContent=qNames[0];$('qbn1').textContent=qNames[1];
   $('qbstake').textContent='$'+qAmt;
-  qReset();
+  qPre=[null,null];qReset();
   connectQWs();
+  // PRE-SIGN both orders immediately — so tap is instant
+  preSignBoth();
+  // Refresh pre-signed orders every 45s (salt/timestamp stays fresh)
+  clearInterval(qPsTimer);
+  qPsTimer=setInterval(()=>{if(!qLocked)preSignBoth();},45000);
   $('qbattle').classList.add('on');
 }
 
 function exitBattle(){
   $('qbattle').classList.remove('on');
   $('qanal').classList.remove('on');
-  if(qWs){qWs.close();qWs=null;}
+  clearInterval(qPsTimer);
+  if(qWs){try{qWs.close()}catch{}qWs=null;}
 }
 
 function qEditStake(){
-  const v=prompt('Сумма ставки ($):',qAmt);
-  const n=parseFloat(v);if(n>0){qAmt=n;$('qbstake').textContent='$'+n;$('qamt').value=n;}
+  if(qLocked)return;
+  const el=$('qbstake');
+  el.innerHTML=`<input id="_qse" type="number" min="1" step="1" value="${qAmt}" style="width:60px;background:transparent;border:none;border-bottom:1px solid var(--acc2);color:var(--acc2);font-size:16px;font-weight:700;outline:none;text-align:center" onblur="_qseApply()" onkeydown="if(event.key==='Enter')this.blur()">`;
+  const i=$('_qse');i.focus();i.select();
+}
+function _qseApply(){
+  const n=parseFloat($('_qse')?.value);
+  if(n>0)qAmt=n;
+  $('qbstake').textContent='$'+qAmt;
+  qSaveConfig();preSignBoth();
 }
 
-function connectQWs(){
-  if(qWs){try{qWs.close()}catch{}qWs=null;}
-  const toks=qMkt?.tokens||[];
-  const yes=toks.find(t=>t.outcome==='Yes')||toks[0];
-  qHistory=[];
-  if(!yes?.token_id){$('qbws').textContent='○';$('qbws').style.color='var(--t3)';return;}
-  try{
-    qWs=new WebSocket('wss://ws-subscriptions-clob.polymarket.com/ws/market');
-    qWs.onopen=()=>{
-      qWs.send(JSON.stringify({assets_ids:[yes.token_id],type:'market'}));
-      $('qbws').textContent='●';$('qbws').style.color='var(--yes)';
-    };
-    qWs.onmessage=(e)=>{
-      try{
-        const d=JSON.parse(e.data);
-        let price=null;
-        if(d.event_type==='book'&&d.asks?.length)price=parseFloat(d.asks[0][0]);
-        else if(d.best_ask)price=parseFloat(d.best_ask);
-        else if(d.price)price=parseFloat(d.price);
-        if(price>0&&price<1){
-          qHistory.push({t:Date.now(),price});
-          if(qHistory.length>600)qHistory.shift();
-        }
-      }catch{}
-    };
-    qWs.onerror=()=>{$('qbws').textContent='○';$('qbws').style.color='var(--no)';};
-    qWs.onclose=()=>{$('qbws').textContent='○';$('qbws').style.color='var(--t3)';};
-  }catch{$('qbws').textContent='○';$('qbws').style.color='var(--t3)';}
+// ── PRE-SIGNING — the key for instant tap ─────────────────────────────────
+async function preSignBoth(){
+  if(!qMkt||!wallet||!creds)return;
+  setQReady(false);
+  const toks=qMkt.tokens||[];
+  for(const side of [0,1]){
+    const tok=toks.find(t=>t.outcome===(side===0?'Yes':'No'))||toks[side]||{};
+    if(!tok.token_id)continue;
+    try{
+      const ord=await buildOrd(tok.token_id,qAmt,tok.price||0.5,qMkt.negRisk);
+      const owner=creds.proxyWallet||creds.address;
+      const body=JSON.stringify({order:ord,owner,orderType:'FOK'});
+      const p=qp(creds);p.set('path','order');
+      qPre[side]={url:`${ep()}?${p}`,body,ts:Date.now(),price:tok.price||0.5};
+    }catch(e){qPre[side]=null;console.warn('presign',side,e);}
+  }
+  setQReady(true);
 }
 
+function setQReady(ready){
+  const el=$('qbws');
+  if(ready){el.textContent='●';el.style.color='var(--yes)';el.title='Ордера готовы';}
+  else{el.textContent='◌';el.style.color='#eab308';el.title='Подписываю...';}
+}
+
+// ── TAP — INSTANT because order is pre-signed ─────────────────────────────
 async function quickBet(side){
   if(qLocked)return;
   if(!qMkt||!creds?.secret){alert('Нужен аккаунт и API key');return;}
-  if(!wallet&&!window.ethereum){alert('Добавь приватный ключ в ⚙ для быстрых ставок');return;}
   qLocked=true;qBetSide=side;
   const t0=Date.now();qBetTime=t0;
   const other=1-side;
+  // Visual lock immediately
   $('qbp'+side).className='qb-player '+(side===0?'L':'R')+' selected';
   $('qbp'+other).className='qb-player '+(other===0?'L':'R')+' dimmed';
-  $('qbst'+side).textContent='⚡ ставлю...';
-  const toks=qMkt.tokens||[];
-  const tok=toks.find(t=>t.outcome===(side===0?'Yes':'No'))||toks[side]||{};
+  $('qbst'+side).textContent='⚡';
+  // Record price at bet time
   const lastPt=qHistory.length?qHistory[qHistory.length-1]:null;
-  qBetPrice=lastPt?lastPt.price:(tok.price||0.5);
+  qBetPrice=lastPt?lastPt.price:(qPre[side]?.price||0.5);
+  let res,ok=false;
   try{
-    if(!tok.token_id)throw new Error('Нет tokenId');
-    const ord=await buildOrd(tok.token_id,qAmt,tok.price||0.5,qMkt.negRisk);
-    const res=await pPost('order',{order:ord,owner:creds.proxyWallet||creds.address,orderType:'FOK'});
+    const pre=qPre[side];
+    if(pre&&Date.now()-pre.ts<55000){
+      // INSTANT: pre-signed order fires immediately — no signing delay
+      res=await fetch(pre.url,{method:'POST',headers:{'Content-Type':'application/json'},body:pre.body});
+    }else{
+      // Fallback: sign now (slower, wallet needed)
+      if(!wallet&&!window.ethereum)throw new Error('Нужен приватный ключ в ⚙');
+      const toks=qMkt.tokens||[];
+      const tok=toks.find(t=>t.outcome===(side===0?'Yes':'No'))||toks[side]||{};
+      if(!tok.token_id)throw new Error('Нет tokenId');
+      const ord=await buildOrd(tok.token_id,qAmt,tok.price||0.5,qMkt.negRisk);
+      res=await pPost('order',{order:ord,owner:creds.proxyWallet||creds.address,orderType:'FOK'});
+    }
     qBetMs=Date.now()-t0;
     const txt=await res.text();let data={};try{data=JSON.parse(txt)}catch{}
-    const ok=res.ok&&(data.success||data.orderID||data.order);
+    ok=res.ok&&(data.success||data.orderID||data.order);
     addHist(qMkt.question,side===0?'YES':'NO',qAmt,qBetMs,ok?'ok':'err');
-    $('qbst'+side).textContent=ok?`✓ ${qBetMs}ms`:`✗ ошибка`;
+    $('qbst'+side).textContent=ok?`✓ ${qBetMs}ms`:`✗ err`;
+    // Start pre-signing next orders immediately after this one fires
+    setTimeout(preSignBoth,80);
     setTimeout(()=>showQAnalytics(side,ok),1000);
   }catch(e){
     qBetMs=Date.now()-t0;
-    $('qbst'+side).textContent='✗ '+(e.message||'Ошибка').slice(0,22);
+    $('qbst'+side).textContent='✗ '+(e.message||'Ошибка').slice(0,20);
+    setTimeout(preSignBoth,200);
     setTimeout(()=>qReset(),2500);
   }
 }
