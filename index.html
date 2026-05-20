@@ -280,30 +280,13 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 .keys{text-align:center;font-size:10.5px;color:var(--t3);font-family:var(--mono);margin-top:10px}
 .k{display:inline-block;background:var(--s2);border:1px solid var(--b2);border-radius:4px;padding:1px 5px;font-size:9.5px;margin:0 2px;color:var(--t2)}
 
-/* ══ QUICK BET ═══════════════════════════════════════════════════════ */
-/* setup page */
-.q-setup{padding:14px}
-.q-setup-label{font-size:10.5px;color:var(--t3);letter-spacing:.07em;text-transform:uppercase;font-weight:600;margin-bottom:7px}
-.q-amt-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
-.q-amt-btn{background:var(--s2);border:1px solid var(--b1);border-radius:9px;color:var(--t2);font-size:13px;font-weight:500;padding:9px 0;text-align:center;cursor:pointer;transition:all .15s}
-.q-amt-btn:hover,.q-amt-btn.on{border-color:var(--acc);color:var(--acc2);background:var(--adim)}
-.q-amt-custom{width:100%;background:var(--s2);border:1.5px solid var(--b2);border-radius:10px;padding:11px 13px;color:var(--t1);font-family:var(--mono);font-size:14px;outline:none;margin-bottom:14px;transition:all .15s}
-.q-amt-custom:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--adim)}
-.qmc{background:var(--s1);border:1px solid var(--b1);border-radius:11px;padding:11px 13px;cursor:pointer;transition:all .15s;margin-bottom:6px}
-.qmc:hover{border-color:var(--b2);background:var(--s2)}
-.qmc.on{border-color:var(--acc);background:var(--s2);box-shadow:0 0 0 1px var(--acc)}
-.qmc-q{font-size:12.5px;font-weight:500;line-height:1.4;margin-bottom:5px}
-.qmc-p{font-size:11px;color:var(--t3);font-family:var(--mono)}
-.q-names-row{display:none;gap:8px;margin:12px 0}
-.q-names-row.on{display:flex;flex-direction:column}
-.q-name-inp{background:var(--s2);border:1.5px solid var(--b2);border-radius:10px;padding:11px 13px;color:var(--t1);font-size:14px;font-weight:600;outline:none;transition:all .15s;text-transform:uppercase}
-.q-name-inp:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--adim)}
-.q-name-inp::placeholder{text-transform:none;font-weight:400;color:var(--t3)}
-.q-name-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.q-start-btn{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--acc),#c026d3);color:#fff;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px var(--aglow);transition:filter .15s,transform .1s}
-.q-start-btn:hover{filter:brightness(1.08)}.q-start-btn:active{transform:scale(.98)}
-.q-start-btn:disabled{opacity:.4;cursor:not-allowed}
-.q-warn{font-size:12px;color:var(--no);margin-top:8px;text-align:center;display:none}
+/* ══ STAKE STRIP ════════════════════════════════════════════════════ */
+.stake-strip{display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s1);border:1px solid var(--b1);border-radius:11px;padding:9px 12px}
+.stake-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;font-weight:600;flex-shrink:0}
+.stake-btns{display:flex;gap:5px;flex:1;flex-wrap:wrap}
+.stkb{background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--t2);font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.stkb:hover,.stkb.on{border-color:var(--acc);color:var(--acc2);background:var(--adim)}
+.stkb.on{box-shadow:0 0 0 1px var(--acc)}
 /* battle overlay */
 #qbattle{position:fixed;inset:0;display:none;flex-direction:column;z-index:90;background:var(--bg);max-width:500px;margin:0 auto}
 #qbattle.on{display:flex}
@@ -413,7 +396,6 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
   <div class="tabs">
     <div class="tab on" id="tm" onclick="tab('m')">Рынки</div>
     <div class="tab" id="th" onclick="tab('h')">История</div>
-    <div class="tab" id="tq" onclick="tab('q')">⚡ Матч</div>
   </div>
 
   <!-- markets page -->
@@ -422,6 +404,17 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
       <b style="color:var(--acc2)">CF Worker не настроен</b> —
       <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--acc2)">workers.cloudflare.com</a>
       → Create → вставь worker.js → Deploy → ⚙ → вставь URL
+    </div>
+    <!-- Ставка выбирается ДО тапа на матч -->
+    <div class="stake-strip">
+      <span class="stake-lbl">Ставка</span>
+      <div class="stake-btns">
+        <div class="stkb" onclick="qSetAmt(5)">$5</div>
+        <div class="stkb on" onclick="qSetAmt(10)">$10</div>
+        <div class="stkb" onclick="qSetAmt(25)">$25</div>
+        <div class="stkb" onclick="qSetAmt(50)">$50</div>
+        <div class="stkb" id="stkc" onclick="editStakeCustom()">···</div>
+      </div>
     </div>
     <div class="srow">
       <span class="sico">⌕</span>
@@ -436,35 +429,6 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
   <!-- history page -->
   <div class="page" id="ph">
     <div id="hl"><div class="empty">История пуста</div></div>
-  </div>
-
-  <!-- quick bet setup page -->
-  <div class="page" id="pq">
-    <div class="q-setup">
-      <div class="q-setup-label">Ставка</div>
-      <div class="q-amt-row">
-        <div class="q-amt-btn" onclick="qSetAmt(5)">$5</div>
-        <div class="q-amt-btn on" onclick="qSetAmt(10)">$10</div>
-        <div class="q-amt-btn" onclick="qSetAmt(25)">$25</div>
-        <div class="q-amt-btn" onclick="qSetAmt(50)">$50</div>
-      </div>
-      <input class="q-amt-custom" id="qamt" type="number" value="10" min="1" step="1" placeholder="Своя сумма $" oninput="qAmt=parseFloat(this.value)||10">
-      <div class="q-setup-label">Выбери матч</div>
-      <div class="srow" style="margin-bottom:10px">
-        <span class="sico">⌕</span>
-        <input type="text" id="qsi" placeholder="Поиск матча..." oninput="qDoSearch()" style="padding-left:38px">
-      </div>
-      <div id="qmlist"></div>
-      <div class="q-names-row" id="qnrow">
-        <div class="q-setup-label" style="margin-bottom:4px">Имена игроков</div>
-        <div class="q-name-row2">
-          <input class="q-name-inp" id="qn0" placeholder="Левый (YES)">
-          <input class="q-name-inp" id="qn1" placeholder="Правый (NO)">
-        </div>
-        <button class="q-start-btn" id="qstartbtn" onclick="startBattle()">▶ Начать матч</button>
-        <div class="q-warn" id="qwarn">Войди и добавь приватный ключ в ⚙ для быстрых ставок</div>
-      </div>
-    </div>
   </div>
 
 </div>
@@ -715,30 +679,24 @@ function startApp(){
   $('login').style.display='none';
   $('app').style.display='block';
   $('wb').style.display=wUrl?'none':'block';
-  loadHist();loadBal();
+  loadHist();loadBal();loadMkts();
   doPing();clearInterval(pitm);pitm=setInterval(doPing,8000);
-  // load markets, then restore battle if config saved
-  loadMkts().then(()=>{
-    if(qLoadConfig()){
-      // Sync qMkt tokens with fresh market data
-      const fresh=mkts.find(m=>m.condition_id===qMkt.condition_id);
-      if(fresh)qMkt=fresh;
-      tab('q');
-      // Auto-open battle screen directly
-      _openBattle();
-    }
-  });
+  // Restore saved stake amount
+  const saved=localStorage.getItem('q_amt');
+  if(saved)qSetAmt(parseFloat(saved)||10);
+}
+
+function editStakeCustom(){
+  const v=prompt('Своя ставка ($):',qAmt);
+  const n=parseFloat(v);if(n>0)qSetAmt(n);
 }
 
 // ── TABS ─────────────────────────────────────────────────────────────────
 function tab(t){
   $('tm').className='tab'+(t==='m'?' on':'');
   $('th').className='tab'+(t==='h'?' on':'');
-  $('tq').className='tab'+(t==='q'?' on':'');
   $('pm').className='page'+(t==='m'?' on':'');
   $('ph').className='page'+(t==='h'?' on':'');
-  $('pq').className='page'+(t==='q'?' on':'');
-  if(t==='q')qInitTab();
 }
 
 // ── PING ─────────────────────────────────────────────────────────────────
@@ -834,17 +792,12 @@ function norm(m){
 function openSheet(id,el){
   document.querySelectorAll('.mc').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');
-  sel=mkts.find(m=>m.condition_id===id);side=null;pre=null;
-  const toks=sel.tokens||[];
-  const yes=toks.find(t=>t.outcome==='Yes')||toks[0]||{};
-  const no=toks.find(t=>t.outcome==='No')||toks[1]||{};
-  $('shq').textContent=sel.question;
-  $('yp').textContent=yes.price!=null?(yes.price*100).toFixed(0)+'¢':'';
-  $('np').textContent=no.price!=null?(no.price*100).toFixed(0)+'¢':'';
-  $('by').classList.remove('on');$('bn').classList.remove('on');
-  $('ainp').value='';$('calc').style.display='none';$('psr').style.display='none';
-  setBet('off','Выбери YES или NO');
-  $('sheet').classList.add('on');$('sbk').classList.add('on');
+  sel=mkts.find(m=>m.condition_id===id);
+  if(!sel)return;
+  // Тап на матч → сразу боевой экран с двумя игроками
+  qMkt=sel;
+  qNames=parsePlayers(sel.question);
+  _openBattle();
 }
 function closeSheet(){
   $('sheet').classList.remove('on');$('sbk').classList.remove('on');
@@ -968,8 +921,12 @@ function qInitTab(){
 }
 
 function qSetAmt(v){
-  qAmt=v;$('qamt').value=v;
-  document.querySelectorAll('.q-amt-btn').forEach(b=>b.classList.toggle('on',b.textContent==='$'+v));
+  qAmt=v;
+  localStorage.setItem('q_amt',v);
+  document.querySelectorAll('.stkb').forEach(b=>b.classList.toggle('on',b.textContent==='$'+v));
+  const c=$('stkc');if(c)c.textContent=['5','10','25','50'].includes(String(v))?'···':'$'+v;
+  // If battle is open — re-presign with new amount
+  if($('qbattle').classList.contains('on')){$('qbstake').textContent='$'+v;preSignBoth();}
 }
 
 function qDoSearch(){
