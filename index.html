@@ -2,1073 +2,792 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Polybot</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 <style>
-:root {
-  --bg:       #08080d;
-  --s1:       #0e0e18;
-  --s2:       #151523;
-  --s3:       #1d1d2e;
-  --b1:       #1e1e30;
-  --b2:       #2c2c44;
-  --acc:      #7c3aed;
-  --acc2:     #9d5ff5;
-  --acc-dim:  rgba(124,58,237,.12);
-  --acc-glow: rgba(124,58,237,.28);
-  --yes:      #10b981;
-  --yes-dim:  rgba(16,185,129,.12);
-  --yes-glow: rgba(16,185,129,.28);
-  --no:       #f43f5e;
-  --no-dim:   rgba(244,63,94,.12);
-  --no-glow:  rgba(244,63,94,.28);
-  --t1: #f0f0f8;
-  --t2: #9090b8;
-  --t3: #50506c;
-  --r:  'Inter', sans-serif;
-  --m:  'JetBrains Mono', monospace;
+:root{
+  --bg:#07070c;--s1:#0d0d16;--s2:#131320;--b1:#1c1c2e;--b2:#282840;
+  --acc:#7c3aed;--acc2:#a78bfa;--adim:rgba(124,58,237,.12);--aglow:rgba(124,58,237,.3);
+  --yes:#10b981;--ydim:rgba(16,185,129,.12);--yglow:rgba(16,185,129,.3);
+  --no:#f43f5e;--ndim:rgba(244,63,94,.12);--nglow:rgba(244,63,94,.3);
+  --t1:#eeeef8;--t2:#8888aa;--t3:#44445a;
+  --mono:'JetBrains Mono',monospace;
 }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-height:100%;font-size:14px}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+/* ══ LOGIN ═══════════════════════════════════════════════════════════ */
+#login{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%,rgba(124,58,237,.2) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 80%,rgba(16,185,129,.08) 0%,transparent 50%);
+}
+.lcard{width:100%;max-width:360px}
+.lbrand{text-align:center;margin-bottom:28px}
+.licon{
+  width:54px;height:54px;margin:0 auto 12px;border-radius:15px;
+  background:linear-gradient(135deg,#7c3aed,#c026d3);
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 0 44px rgba(124,58,237,.45),0 0 0 1px rgba(255,255,255,.08) inset;
+}
+.ltitle{font-size:22px;font-weight:700;letter-spacing:-.03em}
+.lsub{font-size:13px;color:var(--t3);margin-top:5px}
+.lbox{
+  background:var(--s1);border:1px solid var(--b2);border-radius:18px;
+  padding:24px 20px;box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.03) inset;
+}
+.btn-mm{
+  width:100%;background:linear-gradient(135deg,#c05c08,#f97316);
+  color:#fff;border:none;border-radius:11px;padding:14px;
+  font-size:15px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 4px 18px rgba(249,115,22,.3);transition:filter .15s,transform .1s;
+}
+.btn-mm:hover{filter:brightness(1.08)}.btn-mm:active{transform:scale(.98)}
+.btn-mm:disabled{opacity:.45;cursor:not-allowed}
+.divider{display:flex;align-items:center;gap:10px;color:var(--t3);font-size:12px;margin:16px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--b1)}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:10.5px;color:var(--t3);margin-bottom:5px;letter-spacing:.07em;text-transform:uppercase}
+.field input{
+  width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:10px;
+  padding:11px 13px;color:var(--t1);font-family:var(--mono);font-size:12.5px;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.field input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--adim)}
+.field input::placeholder{color:var(--t3)}
+.btn-go{
+  width:100%;background:var(--acc);color:#fff;border:none;border-radius:11px;
+  padding:14px;font-size:15px;font-weight:600;cursor:pointer;margin-top:6px;
+  box-shadow:0 4px 18px var(--aglow);transition:filter .15s,transform .1s;
+}
+.btn-go:hover{filter:brightness(1.08)}.btn-go:active{transform:scale(.98)}
+.btn-go:disabled{opacity:.45;cursor:not-allowed}
+.lerr{color:var(--no);font-size:12.5px;margin-top:12px;text-align:center;display:none}
 
-html, body { height: 100%; overflow: hidden; }
+/* ══ APP SHELL ═══════════════════════════════════════════════════════ */
+#app{display:none;max-width:500px;margin:0 auto;padding-bottom:24px}
 
-body {
-  background: var(--bg);
-  color: var(--t1);
-  font-family: var(--r);
-  font-size: 14px;
-  line-height: 1.5;
+/* sticky header */
+.hdr{
+  position:sticky;top:0;z-index:30;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+  background:rgba(7,7,12,.92);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--b1);
 }
+.hdr-l{display:flex;align-items:center;gap:9px}
+.hdr-r{display:flex;align-items:center;gap:6px}
+.aicon{
+  width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,#7c3aed,#c026d3);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  box-shadow:0 0 14px rgba(124,58,237,.4);
+}
+.aname{font-size:16px;font-weight:700;letter-spacing:-.02em}
+.ping{
+  font-family:var(--mono);font-size:10.5px;padding:3px 8px;
+  border-radius:20px;border:1px solid var(--b2);color:var(--t3);
+  transition:all .4s;
+}
+.ping.g{border-color:rgba(16,185,129,.4);color:var(--yes);background:var(--ydim)}
+.ping.y{border-color:rgba(234,179,8,.4);color:#eab308;background:rgba(234,179,8,.1)}
+.ping.r{border-color:rgba(244,63,94,.4);color:var(--no);background:var(--ndim)}
+.bal{
+  font-family:var(--mono);font-size:13px;color:var(--acc2);
+  background:var(--adim);border:1px solid rgba(124,58,237,.25);
+  border-radius:20px;padding:4px 12px;cursor:pointer;transition:background .15s;
+}
+.bal:hover{background:rgba(124,58,237,.2)}
+.ibtn{background:none;border:none;color:var(--t3);cursor:pointer;padding:4px 2px;font-size:18px;line-height:1;transition:color .15s}
+.ibtn:hover{color:var(--t1)}
 
-/* ───── LOGIN ──────────────────────────────────────────── */
-#login-screen {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124,58,237,.18) 0%, transparent 70%);
+/* tabs */
+.tabs{
+  position:sticky;top:51px;z-index:29;
+  display:flex;background:rgba(7,7,12,.92);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--b1);
 }
+.tab{
+  flex:1;padding:11px 0;text-align:center;font-size:13px;font-weight:500;
+  color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s;
+}
+.tab.on{color:var(--t1);border-bottom-color:var(--acc)}
 
-.login-card {
-  width: 100%;
-  max-width: 360px;
-}
+/* content */
+.page{padding:12px 14px;display:none}
+.page.on{display:block}
 
-.login-brand {
-  text-align: center;
-  margin-bottom: 32px;
+/* worker banner */
+.wbanner{
+  display:none;background:var(--adim);border:1px solid rgba(124,58,237,.2);
+  border-radius:10px;padding:11px 14px;margin-bottom:12px;
+  font-size:12px;color:var(--t2);line-height:1.7;
 }
-.login-icon {
-  width: 56px; height: 56px;
-  background: linear-gradient(135deg, #7c3aed, #c026d3);
-  border-radius: 16px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 26px; margin: 0 auto 14px;
-  box-shadow: 0 0 40px rgba(124,58,237,.4);
-}
-.login-title { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
-.login-sub   { font-size: 13px; color: var(--t3); margin-top: 4px; }
-
-.btn-mm {
-  width: 100%;
-  background: linear-gradient(135deg, #d46b08, #f97316);
-  color: #fff; border: none; border-radius: 12px;
-  padding: 14px; font-size: 15px; font-weight: 600;
-  cursor: pointer; display: flex; align-items: center;
-  justify-content: center; gap: 8px;
-  box-shadow: 0 4px 20px rgba(249,115,22,.25);
-  transition: filter .15s, transform .1s;
-}
-.btn-mm:hover   { filter: brightness(1.08); }
-.btn-mm:active  { transform: scale(.98); }
-.btn-mm:disabled { opacity: .45; cursor: not-allowed; }
-
-.or-divider {
-  display: flex; align-items: center; gap: 12px;
-  font-size: 12px; color: var(--t3); margin: 20px 0;
-}
-.or-divider::before, .or-divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--b1);
-}
-
-.field { margin-bottom: 10px; }
-.field label {
-  display: block; font-size: 11px; color: var(--t3);
-  margin-bottom: 5px; letter-spacing: .06em; text-transform: uppercase;
-}
-.field input {
-  width: 100%; background: var(--s1); border: 1px solid var(--b1);
-  border-radius: 10px; padding: 11px 13px;
-  color: var(--t1); font-family: var(--m); font-size: 12.5px;
-  outline: none; transition: border-color .15s, box-shadow .15s;
-}
-.field input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-dim); }
-.field input::placeholder { color: var(--t3); }
-
-.btn-login {
-  width: 100%; background: var(--acc); color: #fff; border: none;
-  border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 600;
-  cursor: pointer; margin-top: 4px;
-  box-shadow: 0 4px 20px var(--acc-glow);
-  transition: filter .15s, transform .1s;
-}
-.btn-login:hover  { filter: brightness(1.08); }
-.btn-login:active { transform: scale(.98); }
-.btn-login:disabled { opacity: .45; cursor: not-allowed; }
-
-.err { color: var(--no); font-size: 12.5px; margin-top: 12px; text-align: center; display: none; }
-
-/* ───── APP SHELL ──────────────────────────────────────── */
-#app {
-  display: none;
-  height: 100%;
-  flex-direction: column;
-  max-width: 500px;
-  margin: 0 auto;
-  position: relative;
-}
-
-/* ── Header ── */
-.hdr {
-  flex-shrink: 0;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px 10px;
-  border-bottom: 1px solid var(--b1);
-  background: var(--bg);
-  z-index: 20;
-}
-.hdr-left  { display: flex; align-items: center; gap: 10px; }
-.hdr-right { display: flex; align-items: center; gap: 6px; }
-
-.app-icon {
-  width: 30px; height: 30px; flex-shrink: 0;
-  background: linear-gradient(135deg, #7c3aed, #c026d3);
-  border-radius: 8px; display: flex; align-items: center; justify-content: center;
-  font-size: 15px; box-shadow: 0 0 14px rgba(124,58,237,.35);
-}
-.app-name { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
-
-.ping {
-  font-family: var(--m); font-size: 10.5px;
-  padding: 3px 8px; border-radius: 20px;
-  border: 1px solid var(--b1); color: var(--t3);
-  transition: all .35s;
-}
-.ping.g { border-color: rgba(16,185,129,.35); color: var(--yes); background: var(--yes-dim); }
-.ping.y { border-color: rgba(234,179,8,.35);  color: #eab308;  background: rgba(234,179,8,.1); }
-.ping.r { border-color: rgba(244,63,94,.35);  color: var(--no);  background: var(--no-dim); }
-
-.bal {
-  font-family: var(--m); font-size: 13px;
-  color: var(--acc2); background: var(--acc-dim);
-  border: 1px solid rgba(124,58,237,.2);
-  border-radius: 20px; padding: 4px 12px;
-  cursor: pointer; transition: background .15s;
-}
-.bal:hover { background: var(--acc-glow); }
-
-.hdr-btn {
-  background: none; border: none; color: var(--t3);
-  cursor: pointer; font-size: 18px; padding: 4px;
-  line-height: 1; transition: color .15s;
-}
-.hdr-btn:hover { color: var(--t1); }
-
-/* ── Tabs ── */
-.tabs {
-  flex-shrink: 0;
-  display: flex;
-  border-bottom: 1px solid var(--b1);
-  background: var(--bg);
-}
-.tab {
-  flex: 1; padding: 10px; text-align: center;
-  font-size: 13px; font-weight: 500; color: var(--t3);
-  cursor: pointer; border-bottom: 2px solid transparent;
-  transition: color .15s, border-color .15s;
-}
-.tab.active { color: var(--t1); border-bottom-color: var(--acc); }
-
-/* ── Scrollable area ── */
-.scroll-area {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding: 12px 14px;
-}
-.scroll-area::-webkit-scrollbar { width: 3px; }
-.scroll-area::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 3px; }
 
 /* search */
-.search-row {
-  display: flex; gap: 8px; align-items: center; margin-bottom: 12px;
+.srow{position:relative;margin-bottom:14px}
+.srow input{
+  width:100%;background:var(--s1);border:1px solid var(--b1);
+  border-radius:11px;padding:11px 44px 11px 38px;
+  color:var(--t1);font-size:14px;outline:none;transition:all .15s;
 }
-.search-box {
-  flex: 1; position: relative;
+.srow input:focus{border-color:var(--acc);background:var(--s2);box-shadow:0 0 0 3px var(--adim)}
+.srow input::placeholder{color:var(--t3)}
+.sico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:15px;pointer-events:none}
+.scnt{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:var(--t3);pointer-events:none}
+
+/* market cards */
+.mlist{display:flex;flex-direction:column;gap:8px}
+@keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.mc{
+  background:var(--s1);border:1px solid var(--b1);border-radius:13px;
+  padding:13px 14px;cursor:pointer;
+  transition:border-color .18s,background .18s,box-shadow .18s;
+  animation:up .22s ease both;
+  position:relative;overflow:hidden;
 }
-.search-box input {
-  width: 100%; background: var(--s1);
-  border: 1px solid var(--b1); border-radius: 10px;
-  padding: 10px 38px 10px 36px;
-  color: var(--t1); font-size: 14px; outline: none;
-  transition: border-color .15s, background .15s;
+.mc::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(to bottom,var(--yes),var(--acc));
+  opacity:0;transition:opacity .2s;
 }
-.search-box input:focus { border-color: var(--acc); background: var(--s2); }
-.search-box input::placeholder { color: var(--t3); }
-.si { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--t3); font-size: 15px; pointer-events: none; }
-.sc { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font-family: var(--m); font-size: 10px; color: var(--t3); pointer-events: none; }
+.mc:hover{border-color:var(--b2);background:var(--s2)}
+.mc.sel{border-color:var(--acc);background:var(--s2);box-shadow:0 0 0 1px var(--acc),0 6px 24px var(--aglow)}
+.mc.sel::before{opacity:1}
+.mc:nth-child(1){animation-delay:.03s}.mc:nth-child(2){animation-delay:.06s}
+.mc:nth-child(3){animation-delay:.09s}.mc:nth-child(4){animation-delay:.12s}
+.mc:nth-child(5){animation-delay:.15s}.mc:nth-child(6){animation-delay:.18s}
+.mc:nth-child(7){animation-delay:.21s}.mc:nth-child(8){animation-delay:.24s}
 
-/* ── Market cards ── */
-.mlist { display: flex; flex-direction: column; gap: 6px; }
+.mc-q{font-size:13.5px;font-weight:500;line-height:1.4;margin-bottom:10px;color:var(--t1)}
+.mc-bar{height:4px;border-radius:4px;background:var(--b1);margin-bottom:9px;overflow:hidden}
+.mc-bar-y{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--yes),#059669);transition:width .4s}
+.mc-bar-n{height:100%;border-radius:4px;background:var(--no);float:right}
+.mc-foot{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.pill{font-family:var(--mono);font-size:12px;font-weight:500;padding:4px 11px;border-radius:7px}
+.py{background:var(--ydim);color:var(--yes);border:1px solid rgba(16,185,129,.2)}
+.pn{background:var(--ndim);color:var(--no);border:1px solid rgba(244,63,94,.2)}
+.mc-meta{font-size:11px;color:var(--t3);margin-left:auto;font-family:var(--mono)}
 
-.mc {
-  background: var(--s1); border: 1px solid var(--b1);
-  border-radius: 12px; padding: 12px 14px;
-  cursor: pointer; transition: border-color .15s, background .15s;
-  animation: up .2s ease both;
+/* history */
+@keyframes hi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.hi{
+  background:var(--s1);border:1px solid var(--b1);border-radius:12px;
+  padding:12px 14px;display:flex;align-items:center;gap:12px;
+  animation:hi .2s ease both;
 }
-.mc:hover  { border-color: var(--b2); background: var(--s2); }
-.mc.sel    { border-color: var(--acc); background: var(--s2); box-shadow: 0 0 0 1px var(--acc), 0 4px 20px var(--acc-glow); }
-
-@keyframes up { from { opacity:0; transform:translateY(5px) } to { opacity:1; transform:none } }
-.mc:nth-child(1)  { animation-delay:.02s }
-.mc:nth-child(2)  { animation-delay:.04s }
-.mc:nth-child(3)  { animation-delay:.06s }
-.mc:nth-child(4)  { animation-delay:.08s }
-.mc:nth-child(5)  { animation-delay:.10s }
-.mc:nth-child(6)  { animation-delay:.12s }
-.mc:nth-child(7)  { animation-delay:.14s }
-.mc:nth-child(8)  { animation-delay:.16s }
-.mc:nth-child(9)  { animation-delay:.18s }
-.mc:nth-child(10) { animation-delay:.20s }
-
-.mc-q { font-size: 13.5px; font-weight: 500; line-height: 1.4; margin-bottom: 8px; color: var(--t1); }
-
-.mc-bar { height: 3px; border-radius: 3px; background: var(--b1); margin-bottom: 8px; overflow: hidden; }
-.mc-bar-y { height: 100%; border-radius: 3px; background: var(--yes); transition: width .3s; }
-
-.mc-row { display: flex; align-items: center; gap: 6px; }
-.pill {
-  font-family: var(--m); font-size: 11.5px; font-weight: 500;
-  padding: 3px 10px; border-radius: 6px;
-}
-.pill-y { background: var(--yes-dim); color: var(--yes); border: 1px solid rgba(16,185,129,.18); }
-.pill-n { background: var(--no-dim);  color: var(--no);  border: 1px solid rgba(244,63,94,.18); }
-.mc-meta { font-size: 11px; color: var(--t3); margin-left: auto; font-family: var(--m); }
-
-/* ── History tab ── */
-#hist-tab { display: none; }
-.hi {
-  background: var(--s1); border: 1px solid var(--b1);
-  border-radius: 12px; padding: 12px 14px;
-  display: flex; align-items: center; gap: 12px;
-  animation: up .2s ease both;
-}
-.hi + .hi { margin-top: 6px; }
-.hi-q { font-size: 13px; font-weight: 500; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hi-meta { font-size: 11px; color: var(--t3); font-family: var(--m); }
-.hi-ms-ok  { color: var(--yes); }
-.hi-ms-err { color: var(--no); }
-.hi-pill { font-family: var(--m); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 7px; flex-shrink: 0; }
-.hi-pill.yes { background: var(--yes-dim); color: var(--yes); }
-.hi-pill.no  { background: var(--no-dim);  color: var(--no);  }
-
-.empty { color: var(--t3); font-size: 13px; padding: 32px 0; text-align: center; }
+.hi+.hi{margin-top:7px}
+.hi-left{flex:1;min-width:0}
+.hi-q{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.hi-meta{font-size:11px;color:var(--t3);font-family:var(--mono)}
+.ok{color:var(--yes)}.er{color:var(--no)}
+.hpill{font-family:var(--mono);font-size:11px;font-weight:600;padding:4px 10px;border-radius:7px;flex-shrink:0}
+.hpill.y{background:var(--ydim);color:var(--yes)}.hpill.n{background:var(--ndim);color:var(--no)}
+.empty{text-align:center;padding:48px 0;color:var(--t3);font-size:13px}
 
 /* spinner */
-.spin-wrap { text-align: center; padding: 48px 0; }
-.spinner {
-  display: inline-block; width: 20px; height: 20px;
-  border: 2px solid var(--b2); border-top-color: var(--acc);
-  border-radius: 50%; animation: rot .55s linear infinite;
-}
-@keyframes rot { to { transform: rotate(360deg); } }
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-wrap{text-align:center;padding:56px 0}
+.spin{display:inline-block;width:22px;height:22px;border:2px solid var(--b2);border-top-color:var(--acc);border-radius:50%;animation:spin .55s linear infinite}
 
-/* ── Bottom sheet ── */
-.sheet {
-  flex-shrink: 0;
-  background: var(--s1);
-  border-top: 1px solid var(--b2);
-  padding: 16px 16px 28px;
-  transform: translateY(100%);
-  transition: transform .25s cubic-bezier(.4,0,.2,1);
-  position: relative;
+/* ══ BOTTOM SHEET (fixed overlay, not in flow) ═══════════════════════ */
+.sheet-backdrop{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  z-index:40;
 }
-.sheet.open { transform: translateY(0); }
+.sheet-backdrop.on{display:block}
 
-.sheet-handle {
-  width: 36px; height: 3px;
-  background: var(--b2); border-radius: 3px;
-  margin: 0 auto 14px;
+.sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  max-width:500px;margin:0 auto;
+  background:var(--s1);border-top:1px solid var(--b2);border-radius:20px 20px 0 0;
+  padding:0 16px 32px;
+  transform:translateY(100%);
+  transition:transform .28s cubic-bezier(.32,0,.2,1);
+  max-height:92vh;overflow-y:auto;
 }
+.sheet.on{transform:translateY(0)}
 
-.sheet-q {
-  font-size: 13px; font-weight: 600; color: var(--t1);
-  margin-bottom: 14px; line-height: 1.4;
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
-}
-.sheet-close {
-  background: none; border: none; color: var(--t3); font-size: 18px;
-  cursor: pointer; flex-shrink: 0; padding: 0; line-height: 1; transition: color .15s;
-}
-.sheet-close:hover { color: var(--t1); }
+.sh-handle{width:36px;height:3px;background:var(--b2);border-radius:3px;margin:12px auto 16px}
+.sh-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
+.sh-q{font-size:14px;font-weight:600;line-height:1.4;color:var(--t1);flex:1}
+.sh-x{background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s}
+.sh-x:hover{color:var(--t1)}
 
-.yn {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;
+.yn{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.by,.bn{
+  padding:13px;border-radius:11px;font-size:15px;font-weight:700;
+  cursor:pointer;border:1.5px solid transparent;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
 }
-.btn-y, .btn-n {
-  padding: 13px; border-radius: 10px; font-size: 15px; font-weight: 700;
-  cursor: pointer; border: 1.5px solid transparent; transition: all .15s;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.btn-y { background: var(--yes-dim); color: var(--yes); border-color: rgba(16,185,129,.22); }
-.btn-n { background: var(--no-dim);  color: var(--no);  border-color: rgba(244,63,94,.22); }
-.btn-y:hover:not(.on) { background: rgba(16,185,129,.2); }
-.btn-n:hover:not(.on) { background: rgba(244,63,94,.2); }
-.btn-y.on { background: var(--yes); color: #fff; box-shadow: 0 4px 18px var(--yes-glow); border-color: var(--yes); }
-.btn-n.on { background: var(--no);  color: #fff; box-shadow: 0 4px 18px var(--no-glow);  border-color: var(--no); }
+.by{background:var(--ydim);color:var(--yes);border-color:rgba(16,185,129,.25)}
+.bn{background:var(--ndim);color:var(--no);border-color:rgba(244,63,94,.25)}
+.by:hover:not(.on){background:rgba(16,185,129,.2)}
+.bn:hover:not(.on){background:rgba(244,63,94,.2)}
+.by.on{background:var(--yes);color:#fff;box-shadow:0 4px 20px var(--yglow);border-color:var(--yes)}
+.bn.on{background:var(--no);color:#fff;box-shadow:0 4px 20px var(--nglow);border-color:var(--no)}
 
-.amounts { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 10px; }
-.amt {
-  background: var(--s2); border: 1px solid var(--b1);
-  border-radius: 8px; color: var(--t2);
-  font-size: 13px; font-weight: 500;
-  padding: 8px 0; text-align: center; cursor: pointer;
-  transition: all .15s;
+.amts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.amt{
+  background:var(--s2);border:1px solid var(--b1);border-radius:9px;
+  color:var(--t2);font-size:13px;font-weight:500;
+  padding:8px 0;text-align:center;cursor:pointer;transition:all .15s;
 }
-.amt:hover { border-color: var(--acc); color: var(--acc); background: var(--acc-dim); }
+.amt:hover{border-color:var(--acc);color:var(--acc2);background:var(--adim)}
+.amt:active{transform:scale(.95)}
 
-.amount-inp {
-  width: 100%; background: var(--s2); border: 1px solid var(--b2);
-  border-radius: 10px; padding: 12px 14px;
-  color: var(--t1); font-family: var(--m); font-size: 16px;
-  outline: none; margin-bottom: 10px;
-  transition: border-color .15s, box-shadow .15s;
+.ainp{
+  width:100%;background:var(--s2);border:1.5px solid var(--b2);
+  border-radius:11px;padding:13px 14px;
+  color:var(--t1);font-family:var(--mono);font-size:16px;
+  outline:none;margin-bottom:10px;transition:all .15s;
 }
-.amount-inp:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-dim); }
+.ainp:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--adim);background:var(--bg)}
 
-.calc {
-  display: none;
-  background: var(--s2); border: 1px solid var(--b1);
-  border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;
+.calc{
+  display:none;background:var(--s2);border:1px solid var(--b1);
+  border-radius:10px;padding:10px 14px;margin-bottom:11px;
 }
-.calc-row { display: flex; justify-content: space-between; padding: 2px 0; }
-.calc-row .lbl { color: var(--t3); font-family: var(--m); font-size: 12px; }
-.calc-row .val { color: var(--t1); font-family: var(--m); font-size: 12px; font-weight: 600; }
+.calc-r{display:flex;justify-content:space-between;padding:2.5px 0}
+.calc-r .l{color:var(--t3);font-family:var(--mono);font-size:12px}
+.calc-r .v{color:var(--t1);font-family:var(--mono);font-size:12px;font-weight:600}
 
-.presign-row {
-  display: none;
-  align-items: center; gap: 6px; justify-content: flex-end;
-  margin-bottom: 8px;
-  font-size: 11px; color: var(--yes); font-family: var(--m);
+.ps-row{
+  display:none;align-items:center;justify-content:flex-end;gap:6px;
+  margin-bottom:8px;font-size:11px;color:var(--yes);font-family:var(--mono);
 }
-.presign-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--yes); animation: pulse 1.5s ease infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.ps-dot{width:6px;height:6px;border-radius:50%;background:var(--yes);animation:pulse 1.6s infinite}
 
-.btn-bet {
-  width: 100%; padding: 15px; border-radius: 12px; border: none;
-  font-size: 16px; font-weight: 700; cursor: pointer;
-  transition: all .15s; letter-spacing: .01em;
-  position: relative; overflow: hidden;
+.btn-bet{
+  width:100%;padding:15px;border-radius:12px;border:none;
+  font-size:16px;font-weight:700;cursor:pointer;
+  transition:all .15s;position:relative;overflow:hidden;letter-spacing:.01em;
 }
-.btn-bet::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: rgba(255,255,255,.15);
-}
-.btn-bet.y  { background: var(--yes); color: #fff; box-shadow: 0 6px 24px var(--yes-glow); }
-.btn-bet.n  { background: var(--no);  color: #fff; box-shadow: 0 6px 24px var(--no-glow); }
-.btn-bet.off { background: var(--s3); color: var(--t3); box-shadow: none; cursor: not-allowed; }
-.btn-bet:not(.off):hover  { filter: brightness(1.07); transform: translateY(-1px); }
-.btn-bet:not(.off):active { transform: scale(.98); }
+.btn-bet::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:rgba(255,255,255,.15)}
+.btn-bet.y{background:var(--yes);color:#fff;box-shadow:0 6px 24px var(--yglow)}
+.btn-bet.n{background:var(--no);color:#fff;box-shadow:0 6px 24px var(--nglow)}
+.btn-bet.off{background:var(--s2);color:var(--t3);box-shadow:none;cursor:not-allowed}
+.btn-bet.y:hover,.btn-bet.n:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.btn-bet.y:active,.btn-bet.n:active{transform:scale(.98)}
 
-.keys-hint {
-  text-align: center; font-size: 10.5px; color: var(--t3);
-  font-family: var(--m); margin-top: 10px;
-}
-.k {
-  display: inline-block; background: var(--s2);
-  border: 1px solid var(--b2); border-radius: 4px;
-  padding: 1px 5px; font-size: 9.5px; margin: 0 2px; color: var(--t2);
-}
+.keys{text-align:center;font-size:10.5px;color:var(--t3);font-family:var(--mono);margin-top:10px}
+.k{display:inline-block;background:var(--s2);border:1px solid var(--b2);border-radius:4px;padding:1px 5px;font-size:9.5px;margin:0 2px;color:var(--t2)}
 
-/* ── Settings modal ── */
-.overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.75); backdrop-filter: blur(8px);
-  z-index: 100; align-items: flex-end; justify-content: center; padding: 0;
+/* ══ SETTINGS SHEET ══════════════════════════════════════════════════ */
+.set-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:60}
+.set-back.on{display:flex;align-items:flex-end;justify-content:center}
+.set-modal{
+  background:var(--s1);border-top:1px solid var(--b2);border-radius:20px 20px 0 0;
+  padding:0 20px 36px;width:100%;max-width:500px;
+  animation:up .25s ease;
 }
-.modal {
-  background: var(--s1); border-top: 1px solid var(--b2);
-  border-radius: 20px 20px 0 0; padding: 20px 20px 36px;
-  width: 100%; max-width: 500px;
-  animation: slideUp .25s ease;
-}
-@keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
-.modal-hdl { width: 36px; height: 3px; background: var(--b2); border-radius: 3px; margin: 0 auto 18px; }
-.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
-.sec-title { font-size: 10.5px; color: var(--t3); letter-spacing: .07em; text-transform: uppercase; margin-bottom: 6px; font-weight: 600; }
-.sec-desc  { font-size: 12px; color: var(--t2); margin-bottom: 10px; line-height: 1.6; }
-.pk-status { font-size: 12px; color: var(--t3); min-height: 16px; font-family: var(--m); margin: 6px 0 14px; }
-.sep { height: 1px; background: var(--b1); margin: 18px 0; }
-.modal-row { display: flex; gap: 10px; margin-top: 6px; }
-.btn-save {
-  flex: 1; background: var(--acc); color: #fff; border: none;
-  border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: filter .15s;
-}
-.btn-save:hover { filter: brightness(1.08); }
-.btn-save.g { background: var(--yes); }
-.btn-canc {
-  flex: 1; background: none; border: 1px solid var(--b2);
-  color: var(--t2); border-radius: 10px; padding: 12px;
-  cursor: pointer; font-size: 14px; transition: all .15s;
-}
-.btn-canc:hover { background: var(--s2); color: var(--t1); }
-
-/* ── Worker banner ── */
-.wbanner {
-  display: none; background: var(--acc-dim);
-  border: 1px solid rgba(124,58,237,.2);
-  border-radius: 10px; padding: 11px 14px; margin-bottom: 12px;
-  font-size: 12px; color: var(--t2); line-height: 1.7;
-}
+.set-hdl{width:36px;height:3px;background:var(--b2);border-radius:3px;margin:12px auto 18px}
+.set-title{font-size:16px;font-weight:700;margin-bottom:18px}
+.stitle{font-size:10.5px;color:var(--t3);letter-spacing:.07em;text-transform:uppercase;font-weight:600;margin-bottom:6px}
+.sdesc{font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.65}
+.pk-st{font-size:12px;min-height:16px;font-family:var(--mono);margin:6px 0 14px;color:var(--t3)}
+.sep{height:1px;background:var(--b1);margin:18px 0}
+.srow2{display:flex;gap:10px;margin-top:6px}
+.bsave{flex:1;background:var(--acc);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;transition:filter .15s}
+.bsave:hover{filter:brightness(1.08)}.bsave.g{background:var(--yes)}
+.bcanc{flex:1;background:none;border:1px solid var(--b2);color:var(--t2);border-radius:10px;padding:12px;cursor:pointer;font-size:14px;transition:all .15s}
+.bcanc:hover{background:var(--s2);color:var(--t1)}
 </style>
 </head>
 <body>
 
-<!-- ═══ LOGIN ═══════════════════════════════════════════════════════════ -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-brand">
-      <div class="login-icon">⚡</div>
-      <div class="login-title">Polybot</div>
-      <div class="login-sub">Торговый терминал Polymarket</div>
+<!-- ══ LOGIN ═════════════════════════════════════════════════════════════ -->
+<div id="login">
+  <div class="lcard">
+    <div class="lbrand">
+      <div class="licon">⚡</div>
+      <div class="ltitle">Polybot</div>
+      <div class="lsub">Торговый терминал Polymarket</div>
     </div>
-    <button class="btn-mm" id="mm-btn" onclick="loginMM()">🦊 Войти через MetaMask</button>
-    <div class="or-divider">или вручную</div>
-    <div class="field"><label>Wallet Address</label><input id="inp-addr" type="text" placeholder="0x3d1e..."></div>
-    <div class="field"><label>API Key</label><input id="inp-key" type="text" placeholder="019e3d6a-..."></div>
-    <div class="field"><label>Secret</label><input id="inp-secret" type="password" placeholder="base64..."></div>
-    <div class="field"><label>Passphrase</label><input id="inp-pass" type="password" placeholder="passphrase..."></div>
-    <button class="btn-login" id="login-btn" onclick="doLogin()">Войти</button>
-    <div class="err" id="err"></div>
+    <div class="lbox">
+      <button class="btn-mm" id="mm-btn" onclick="loginMM()">🦊 Войти через MetaMask</button>
+      <div class="divider">или вручную</div>
+      <div class="field"><label>Wallet Address</label><input id="ia" type="text" placeholder="0x3d1e..."></div>
+      <div class="field"><label>API Key</label><input id="ik" type="text" placeholder="019e3d6a-..."></div>
+      <div class="field"><label>Secret</label><input id="is" type="password" placeholder="base64..."></div>
+      <div class="field"><label>Passphrase</label><input id="ip" type="password" placeholder="passphrase..."></div>
+      <button class="btn-go" id="login-btn" onclick="doLogin()">Войти</button>
+      <div class="lerr" id="lerr"></div>
+    </div>
   </div>
 </div>
 
-<!-- ═══ APP ══════════════════════════════════════════════════════════════ -->
+<!-- ══ APP ═══════════════════════════════════════════════════════════════ -->
 <div id="app">
 
-  <!-- Header -->
   <div class="hdr">
-    <div class="hdr-left">
-      <div class="app-icon">⚡</div>
-      <div class="app-name">Polybot</div>
+    <div class="hdr-l">
+      <div class="aicon">⚡</div>
+      <div class="aname">Polybot</div>
       <div class="ping" id="ping">—ms</div>
     </div>
-    <div class="hdr-right">
-      <div class="bal" id="bal" onclick="loadBal()" ondblclick="debugBal()" title="Клик=обновить">$—</div>
-      <button class="hdr-btn" onclick="openSet()" title="Настройки">⚙</button>
-      <button class="hdr-btn" onclick="logout()" title="Выйти" style="font-size:13px;font-weight:600">×</button>
+    <div class="hdr-r">
+      <div class="bal" id="bal" onclick="loadBal()" ondblclick="debugBal()" title="клик = обновить">$—</div>
+      <button class="ibtn" onclick="openSet()">⚙</button>
+      <button class="ibtn" onclick="logout()" style="font-size:13px;font-weight:600">×</button>
     </div>
   </div>
 
-  <!-- Tabs -->
   <div class="tabs">
-    <div class="tab active" id="tab-m" onclick="switchTab('m')">Рынки</div>
-    <div class="tab" id="tab-h" onclick="switchTab('h')">История</div>
+    <div class="tab on" id="tm" onclick="tab('m')">Рынки</div>
+    <div class="tab" id="th" onclick="tab('h')">История</div>
   </div>
 
-  <!-- Scroll area -->
-  <div class="scroll-area" id="scroll">
-
-    <div id="mkt-tab">
-      <div class="wbanner" id="wbanner">
-        <b style="color:var(--acc2)">CF Worker не настроен</b> —
-        <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--acc2)">workers.cloudflare.com</a>
-        → Create Worker → код из worker.js → Deploy → ⚙ → вставь URL
-      </div>
-      <div class="search-row">
-        <div class="search-box">
-          <span class="si">⌕</span>
-          <input type="text" id="search" placeholder="Поиск рынков..." oninput="doSearch()">
-          <span class="sc" id="cnt"></span>
-        </div>
-      </div>
-      <div class="mlist" id="mlist">
-        <div class="spin-wrap"><div class="spinner"></div></div>
-      </div>
+  <!-- markets page -->
+  <div class="page on" id="pm">
+    <div class="wbanner" id="wb">
+      <b style="color:var(--acc2)">CF Worker не настроен</b> —
+      <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--acc2)">workers.cloudflare.com</a>
+      → Create → вставь worker.js → Deploy → ⚙ → вставь URL
     </div>
-
-    <div id="hist-tab" style="display:none">
-      <div class="hlist" id="hlist"></div>
+    <div class="srow">
+      <span class="sico">⌕</span>
+      <input type="text" id="si" placeholder="Поиск рынков..." oninput="doSearch()">
+      <span class="scnt" id="scnt"></span>
     </div>
-
+    <div class="mlist" id="ml">
+      <div class="spin-wrap"><div class="spin"></div></div>
+    </div>
   </div>
 
-  <!-- Bottom Sheet (bet panel) -->
-  <div class="sheet" id="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-q">
-      <span id="sq"></span>
-      <button class="sheet-close" onclick="closeSheet()">×</button>
-    </div>
-    <div class="yn">
-      <button class="btn-y" id="btn-y" onclick="pick('YES')">YES <span id="yp"></span></button>
-      <button class="btn-n" id="btn-n" onclick="pick('NO')">NO <span id="np"></span></button>
-    </div>
-    <div class="amounts">
-      <div class="amt" onclick="setAmt(1)">$1</div>
-      <div class="amt" onclick="setAmt(5)">$5</div>
-      <div class="amt" onclick="setAmt(10)">$10</div>
-      <div class="amt" onclick="setAmt(25)">$25</div>
-    </div>
-    <input class="amount-inp" id="ainp" type="number" min="0.01" step="0.01" placeholder="Введи сумму $" oninput="updCalc()">
-    <div class="calc" id="calc">
-      <div class="calc-row"><span class="lbl">Акции</span><span class="val" id="cshares">—</span></div>
-      <div class="calc-row"><span class="lbl">Цена</span><span class="val" id="cprice">—</span></div>
-      <div class="calc-row"><span class="lbl">Макс. выплата</span><span class="val" id="cpay">—</span></div>
-    </div>
-    <div class="presign-row" id="psrow">
-      <div class="presign-dot"></div>
-      ⚡ ордер готов — отправка ~0ms
-    </div>
-    <button class="btn-bet off" id="btn-bet" onclick="placeBet()">Выбери YES или NO</button>
-    <div class="keys-hint"><span class="k">Y</span>YES <span class="k">N</span>NO <span class="k">↵</span>Ставить <span class="k">1</span><span class="k">5</span><span class="k">0</span>$1/$5/$10</div>
+  <!-- history page -->
+  <div class="page" id="ph">
+    <div id="hl"><div class="empty">История пуста</div></div>
   </div>
 
 </div>
 
-<!-- ═══ SETTINGS ════════════════════════════════════════════════════════ -->
-<div class="overlay" id="set-overlay" onclick="maybeCloseSet(event)">
-  <div class="modal">
-    <div class="modal-hdl"></div>
-    <div class="modal-title">Настройки</div>
+<!-- ══ SHEET BACKDROP ═════════════════════════════════════════════════════ -->
+<div class="sheet-backdrop" id="sbk" onclick="closeSheet()"></div>
 
-    <div class="sec-title">Приватный ключ — быстрые ставки</div>
-    <div class="sec-desc">В памяти только до закрытия вкладки.<br>С ключом: подпись ~1ms. Без ключа (MetaMask): 1–3s.</div>
-    <div class="field"><input id="pk-inp" type="password" placeholder="0x... приватный ключ"></div>
-    <div class="pk-status" id="pk-status"></div>
-    <button class="btn-save g" style="width:100%" onclick="applyPK()">Подключить ключ</button>
+<!-- ══ BET SHEET (fixed, not in flow) ═══════════════════════════════════ -->
+<div class="sheet" id="sheet">
+  <div class="sh-handle"></div>
+  <div class="sh-head">
+    <div class="sh-q" id="shq"></div>
+    <button class="sh-x" onclick="closeSheet()">×</button>
+  </div>
+  <div class="yn">
+    <button class="by" id="by" onclick="pick('YES')">YES <span id="yp"></span></button>
+    <button class="bn" id="bn" onclick="pick('NO')">NO <span id="np"></span></button>
+  </div>
+  <div class="amts">
+    <div class="amt" onclick="setAmt(1)">$1</div>
+    <div class="amt" onclick="setAmt(5)">$5</div>
+    <div class="amt" onclick="setAmt(10)">$10</div>
+    <div class="amt" onclick="setAmt(25)">$25</div>
+  </div>
+  <input class="ainp" id="ainp" type="number" min="0.01" step="0.01" placeholder="Сумма $" oninput="updCalc()">
+  <div class="calc" id="calc">
+    <div class="calc-r"><span class="l">Акции</span><span class="v" id="cs"></span></div>
+    <div class="calc-r"><span class="l">Цена</span><span class="v" id="cp"></span></div>
+    <div class="calc-r"><span class="l">Макс. выплата</span><span class="v" id="cpy"></span></div>
+  </div>
+  <div class="ps-row" id="psr"><div class="ps-dot"></div>⚡ ордер готов · ~0ms</div>
+  <button class="btn-bet off" id="bbtn" onclick="placeBet()">Выбери YES или NO</button>
+  <div class="keys"><span class="k">Y</span>YES <span class="k">N</span>NO <span class="k">↵</span>Ставить <span class="k">1</span><span class="k">5</span><span class="k">0</span>$1 $5 $10</div>
+</div>
 
+<!-- ══ SETTINGS SHEET ════════════════════════════════════════════════════ -->
+<div class="set-back" id="setbk" onclick="maybeClose(event)">
+  <div class="set-modal">
+    <div class="set-hdl"></div>
+    <div class="set-title">Настройки</div>
+    <div class="stitle">Приватный ключ — быстрые ставки</div>
+    <div class="sdesc">Только в памяти. С ключом подпись ~1ms, без (MetaMask) 1–3s.</div>
+    <div class="field"><input id="pki" type="password" placeholder="0x... приватный ключ"></div>
+    <div class="pk-st" id="pkst"></div>
+    <button class="bsave g" style="width:100%" onclick="applyPK()">Подключить ключ</button>
     <div class="sep"></div>
-
-    <div class="sec-title">CF Worker URL</div>
-    <div class="field" style="margin-bottom:8px"><input id="wu-inp" type="text" placeholder="https://polybot.YOUR.workers.dev" style="font-family:var(--m);font-size:12.5px"></div>
-    <div class="modal-row">
-      <button class="btn-save" onclick="saveWorker()">Сохранить</button>
-      <button class="btn-canc" onclick="closeSet()">Закрыть</button>
+    <div class="stitle">CF Worker URL</div>
+    <div class="field" style="margin-bottom:8px">
+      <input id="wui" type="text" placeholder="https://polybot.YOUR.workers.dev" style="font-family:var(--mono);font-size:12.5px">
+    </div>
+    <div class="srow2">
+      <button class="bsave" onclick="saveW()">Сохранить</button>
+      <button class="bcanc" onclick="closeSet()">Закрыть</button>
     </div>
   </div>
 </div>
 
 <script>
-const PROXY = 'https://plain-violet-81f6.hairmakerpre.workers.dev';
-let workerUrl = localStorage.getItem('poly_worker_url') || PROXY;
-let creds = null, sessionWallet = null, presigned = null;
-let allMkts = [], selMkt = null, selSide = null;
-let history = [], searchTm = null, presignTm = null, pingTm = null;
+const PROXY='https://plain-violet-81f6.hairmakerpre.workers.dev';
+let wUrl=localStorage.getItem('poly_wu')||PROXY;
+let creds=null,wallet=null,pre=null;
+let mkts=[],sel=null,side=null,hist=[],stm=null,ptm=null,pitm=null;
 
-// ── CREDS ────────────────────────────────────────────────────────────────
-function saveCreds(c) { localStorage.setItem('poly_creds', JSON.stringify(c)); }
-function readCreds() { try { const s = localStorage.getItem('poly_creds'); return s ? JSON.parse(s) : null; } catch { return null; } }
+// helpers
+const $=id=>document.getElementById(id);
+const V=id=>$(id).value.trim();
 
-async function doLogin() {
-  const btn = document.getElementById('login-btn');
+// ── AUTH ─────────────────────────────────────────────────────────────────
+function saveCreds(c){localStorage.setItem('poly_c',JSON.stringify(c))}
+function rdCreds(){try{const s=localStorage.getItem('poly_c');return s?JSON.parse(s):null}catch{return null}}
+
+function showErr(m){const e=$('lerr');e.textContent=m;e.style.display='block'}
+function hideErr(){$('lerr').style.display='none'}
+
+async function doLogin(){
   hideErr();
-  const addr = v('inp-addr'), key = v('inp-key'), sec = v('inp-secret'), pass = v('inp-pass');
-  if (!addr || !key)  return err('Заполни адрес и API key');
-  if (!addr.startsWith('0x') || addr.length < 40) return err('Неверный формат адреса');
-  if (key.length < 8) return err('Неверный формат API ключа');
-  if (!sec || !pass)  return err('Нужны Secret и Passphrase');
-  btn.disabled = true; btn.textContent = 'Проверяю...';
-  creds = { address: addr, apiKey: key, secret: sec, passphrase: pass };
-  saveCreds(creds);
-  startApp();
-  btn.disabled = false; btn.textContent = 'Войти';
+  const a=V('ia'),k=V('ik'),s=V('is'),p=V('ip');
+  if(!a||!k)return showErr('Заполни адрес и API key');
+  if(!a.startsWith('0x')||a.length<40)return showErr('Неверный адрес');
+  if(k.length<8)return showErr('Неверный API key');
+  if(!s||!p)return showErr('Нужны Secret и Passphrase');
+  const btn=$('login-btn');btn.disabled=true;btn.textContent='Проверяю...';
+  creds={address:a,apiKey:k,secret:s,passphrase:p};
+  saveCreds(creds);startApp();
+  btn.disabled=false;btn.textContent='Войти';
 }
 
-async function loginMM() {
-  const btn = document.getElementById('mm-btn');
-  const reset = () => { btn.disabled = false; btn.innerHTML = '🦊 Войти через MetaMask'; };
-  if (!window.ethereum) {
-    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-      window.location.href = 'https://metamask.app.link/dapp/maidive.github.io/polymar'; return;
+async function loginMM(){
+  const btn=$('mm-btn');
+  const reset=()=>{btn.disabled=false;btn.innerHTML='🦊 Войти через MetaMask'};
+  if(!window.ethereum){
+    if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
+      window.location.href='https://metamask.app.link/dapp/maidive.github.io/polymar';return;
     }
-    return err('MetaMask не найден');
+    return showErr('MetaMask не найден');
   }
-  hideErr(); btn.disabled = true; btn.textContent = '🦊 Подключаю...';
-  try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    const address  = accounts[0];
-    try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x89' }] });
-    } catch (e) {
-      if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
-        chainId:'0x89', chainName:'Polygon Mainnet',
+  hideErr();btn.disabled=true;btn.textContent='🦊 Подключаю...';
+  try{
+    const [address]=await window.ethereum.request({method:'eth_requestAccounts'});
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x89'}]});
+    }catch(e){
+      if(e.code===4902)await window.ethereum.request({method:'wallet_addEthereumChain',params:[{
+        chainId:'0x89',chainName:'Polygon Mainnet',
         nativeCurrency:{name:'POL',symbol:'POL',decimals:18},
-        rpcUrls:['https://polygon-rpc.com/'], blockExplorerUrls:['https://polygonscan.com/']
+        rpcUrls:['https://polygon-rpc.com/'],blockExplorerUrls:['https://polygonscan.com/']
       }]});
       else throw e;
     }
-    const serverTs = await fetch('https://clob.polymarket.com/time').then(r=>r.json()).catch(()=>Math.floor(Date.now()/1000));
-    const timestamp = String(typeof serverTs === 'number' ? serverTs : Math.floor(Date.now()/1000));
-    btn.textContent = '🦊 Подпиши...';
-    const provider  = new ethers.BrowserProvider(window.ethereum);
-    const signer    = await provider.getSigner();
-    const domain    = { name:'ClobAuthDomain', version:'1', chainId:137 };
-    const types     = { ClobAuth:[{name:'address',type:'address'},{name:'timestamp',type:'string'},{name:'nonce',type:'uint256'},{name:'message',type:'string'}] };
-    const val       = { address, timestamp, nonce:0, message:'This message attests that I control the given wallet' };
-    const signature = await signer.signTypedData(domain, types, val);
-    btn.textContent = '🦊 Получаю ключи...';
-    const hdrs = { 'POLY_ADDRESS':address,'POLY_SIGNATURE':signature,'POLY_TIMESTAMP':timestamp,'POLY_NONCE':'0' };
-    let res = await fetch('https://clob.polymarket.com/auth/api-key',{method:'POST',headers:hdrs});
-    let keys = await res.json().catch(()=>({}));
-    if (!res.ok || (!keys.apiKey && !keys.key)) {
-      res = await fetch('https://clob.polymarket.com/auth/derive-api-key',{method:'GET',headers:hdrs});
-      keys = await res.json().catch(()=>({}));
+    const serverTs=await fetch('https://clob.polymarket.com/time').then(r=>r.json()).catch(()=>Math.floor(Date.now()/1000));
+    const ts=String(typeof serverTs==='number'?serverTs:Math.floor(Date.now()/1000));
+    btn.textContent='🦊 Подпиши...';
+    const prov=new ethers.BrowserProvider(window.ethereum);
+    const sig=await(await prov.getSigner()).signTypedData(
+      {name:'ClobAuthDomain',version:'1',chainId:137},
+      {ClobAuth:[{name:'address',type:'address'},{name:'timestamp',type:'string'},{name:'nonce',type:'uint256'},{name:'message',type:'string'}]},
+      {address,timestamp:ts,nonce:0,message:'This message attests that I control the given wallet'}
+    );
+    btn.textContent='🦊 Получаю ключи...';
+    const hdrs={'POLY_ADDRESS':address,'POLY_SIGNATURE':sig,'POLY_TIMESTAMP':ts,'POLY_NONCE':'0'};
+    let r=await fetch('https://clob.polymarket.com/auth/api-key',{method:'POST',headers:hdrs});
+    let k=await r.json().catch(()=>({}));
+    if(!r.ok||(!k.apiKey&&!k.key)){
+      r=await fetch('https://clob.polymarket.com/auth/derive-api-key',{method:'GET',headers:hdrs});
+      k=await r.json().catch(()=>({}));
     }
-    const apiKey = keys.apiKey || keys.key;
-    if (!apiKey) throw new Error(keys.error || `HTTP ${res.status}`);
-    creds = { address, apiKey, secret: keys.secret, passphrase: keys.passphrase };
-    saveCreds(creds);
-    startApp();
-  } catch(e) {
-    err(e.code===4001 ? 'Отклонено пользователем' : 'Ошибка: '+e.message);
-    reset();
-  }
+    const apiKey=k.apiKey||k.key;
+    if(!apiKey)throw new Error(k.error||`HTTP ${r.status}`);
+    creds={address,apiKey,secret:k.secret,passphrase:k.passphrase};
+    saveCreds(creds);startApp();
+  }catch(e){showErr(e.code===4001?'Отклонено':'Ошибка: '+e.message);reset()}
 }
 
-function logout() {
-  localStorage.removeItem('poly_creds');
-  creds = null; clearInterval(pingTm);
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
+function logout(){
+  localStorage.removeItem('poly_c');creds=null;
+  clearInterval(pitm);
+  $('app').style.display='none';$('login').style.display='flex';
 }
-
-function v(id) { return document.getElementById(id).value.trim(); }
-function err(msg) { const e = document.getElementById('err'); e.textContent = msg; e.style.display = 'block'; }
-function hideErr() { document.getElementById('err').style.display = 'none'; }
 
 // ── PROXY ────────────────────────────────────────────────────────────────
-const ep = () => workerUrl || PROXY;
-async function pGet(path, c = creds) {
-  const p = new URLSearchParams({ path, apiKey: c.apiKey, address: c.address });
-  if (c.secret)     p.set('secret',     c.secret);
-  if (c.passphrase) p.set('passphrase', c.passphrase);
-  return fetch(`${ep()}?${p}`);
+const ep=()=>wUrl||PROXY;
+function qp(c=creds){
+  const p=new URLSearchParams({path:'',apiKey:c.apiKey,address:c.address});
+  if(c.secret)p.set('secret',c.secret);
+  if(c.passphrase)p.set('passphrase',c.passphrase);
+  return p;
 }
-async function pPost(path, body, c = creds) {
-  const p = new URLSearchParams({ path, apiKey: c.apiKey, address: c.address });
-  if (c.secret)     p.set('secret',     c.secret);
-  if (c.passphrase) p.set('passphrase', c.passphrase);
-  return fetch(`${ep()}?${p}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-}
+async function pGet(path,c=creds){const p=qp(c);p.set('path',path);return fetch(`${ep()}?${p}`)}
+async function pPost(path,body,c=creds){const p=qp(c);p.set('path',path);return fetch(`${ep()}?${p}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
 
 // ── CRYPTO ───────────────────────────────────────────────────────────────
-async function hmac(secret, msg) {
-  const kb  = Uint8Array.from(atob(secret), c=>c.charCodeAt(0));
-  const key = await crypto.subtle.importKey('raw', kb, {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
-  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+async function hmac(secret,msg){
+  const kb=Uint8Array.from(atob(secret),c=>c.charCodeAt(0));
+  const key=await crypto.subtle.importKey('raw',kb,{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const sg=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(msg));
+  return btoa(String.fromCharCode(...new Uint8Array(sg)));
+}
+async function buildOrd(tokenId,uAmt,price,negRisk){
+  const eoa=creds.address,lp=Math.min(price*1.05,.999);
+  const ma=String(Math.round(uAmt*1e6)),ta=String(Math.round(uAmt/lp*1e6));
+  const con=negRisk?'0xC5d563A36AE78145C45a50134d48A1215220f80a':'0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
+  const msg={salt:String(Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)),maker:creds.proxyWallet||eoa,signer:eoa,taker:'0x0000000000000000000000000000000000000000',tokenId,makerAmount:ma,takerAmount:ta,expiration:'0',nonce:'0',feeRateBps:'0',side:0,signatureType:0};
+  const dom={name:'Polymarket CTF Exchange',version:'1',chainId:137,verifyingContract:con};
+  const types={Order:[{name:'salt',type:'uint256'},{name:'maker',type:'address'},{name:'signer',type:'address'},{name:'taker',type:'address'},{name:'tokenId',type:'uint256'},{name:'makerAmount',type:'uint256'},{name:'takerAmount',type:'uint256'},{name:'expiration',type:'uint256'},{name:'nonce',type:'uint256'},{name:'feeRateBps',type:'uint256'},{name:'side',type:'uint8'},{name:'signatureType',type:'uint8'}]};
+  const signature=wallet?await wallet.signTypedData(dom,types,msg):await window.ethereum.request({method:'eth_signTypedData_v4',params:[eoa,JSON.stringify({domain:dom,types,primaryType:'Order',message:msg})]});
+  return{...msg,signature};
 }
 
-async function buildOrder(tokenId, usdcAmt, price, negRisk) {
-  const eoa = creds.address;
-  const lp  = Math.min(price*1.05, 0.999);
-  const ma  = String(Math.round(usdcAmt*1e6));
-  const ta  = String(Math.round((usdcAmt/lp)*1e6));
-  const con = negRisk ? '0xC5d563A36AE78145C45a50134d48A1215220f80a' : '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
-  const msg = {
-    salt: String(Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)),
-    maker: creds.proxyWallet||eoa, signer: eoa,
-    taker: '0x0000000000000000000000000000000000000000',
-    tokenId, makerAmount: ma, takerAmount: ta,
-    expiration:'0', nonce:'0', feeRateBps:'0', side:0, signatureType:0
-  };
-  const domain = {name:'Polymarket CTF Exchange',version:'1',chainId:137,verifyingContract:con};
-  const types  = { Order:[
-    {name:'salt',type:'uint256'},{name:'maker',type:'address'},{name:'signer',type:'address'},
-    {name:'taker',type:'address'},{name:'tokenId',type:'uint256'},{name:'makerAmount',type:'uint256'},
-    {name:'takerAmount',type:'uint256'},{name:'expiration',type:'uint256'},{name:'nonce',type:'uint256'},
-    {name:'feeRateBps',type:'uint256'},{name:'side',type:'uint8'},{name:'signatureType',type:'uint8'}
-  ]};
-  const signature = sessionWallet
-    ? await sessionWallet.signTypedData(domain, types, msg)
-    : await window.ethereum.request({method:'eth_signTypedData_v4', params:[eoa, JSON.stringify({domain,types,primaryType:'Order',message:msg})]});
-  return { ...msg, signature };
-}
-
-// ── PRIVATE KEY ──────────────────────────────────────────────────────────
-function applyPK() {
-  const pk = document.getElementById('pk-inp').value.trim();
-  const st = document.getElementById('pk-status');
-  if (!pk) { sessionWallet = null; st.textContent = 'Ключ удалён'; st.style.color = 'var(--t3)'; return; }
-  try {
-    const w = new ethers.Wallet(pk.startsWith('0x') ? pk : '0x'+pk);
-    if (creds && w.address.toLowerCase() !== creds.address.toLowerCase()) {
-      st.textContent = '✗ Адрес не совпадает'; st.style.color = 'var(--no)'; return;
-    }
-    sessionWallet = w;
-    document.getElementById('pk-inp').value = '';
-    st.textContent = '✓ '+w.address.slice(0,10)+'... · подпись ~1ms'; st.style.color = 'var(--yes)';
-  } catch { st.textContent = '✗ Неверный ключ'; st.style.color = 'var(--no)'; }
+// ── PK ───────────────────────────────────────────────────────────────────
+function applyPK(){
+  const pk=$('pki').value.trim(),st=$('pkst');
+  if(!pk){wallet=null;st.textContent='Ключ удалён';st.style.color='var(--t3)';return}
+  try{
+    const w=new ethers.Wallet(pk.startsWith('0x')?pk:'0x'+pk);
+    if(creds&&w.address.toLowerCase()!==creds.address.toLowerCase()){st.textContent='✗ Адрес не совпадает';st.style.color='var(--no)';return}
+    wallet=w;$('pki').value='';
+    st.textContent='✓ '+w.address.slice(0,10)+'... · подпись ~1ms';st.style.color='var(--yes)';
+  }catch{st.textContent='✗ Неверный ключ';st.style.color='var(--no)'}
 }
 
 // ── PRESIGN ──────────────────────────────────────────────────────────────
-async function doPresign() {
-  if (!sessionWallet||!selMkt||!selSide) return;
-  const amt = parseFloat(document.getElementById('ainp').value)||0;
-  if (amt<=0) return;
-  const toks = selMkt.tokens||[];
-  const tok  = toks.find(t=>t.outcome===(selSide==='YES'?'Yes':'No'))||toks[0]||{};
-  if (!tok.token_id) return;
-  try {
-    const order = await buildOrder(tok.token_id, amt, tok.price||0.5, selMkt.negRisk);
-    presigned = { order, amount: amt, side: selSide, tokenId: tok.token_id };
-    document.getElementById('psrow').style.display = 'flex';
-  } catch { presigned = null; document.getElementById('psrow').style.display = 'none'; }
+async function doPresign(){
+  if(!wallet||!sel||!side)return;
+  const amt=parseFloat($('ainp').value)||0;if(amt<=0)return;
+  const toks=sel.tokens||[];
+  const tok=toks.find(t=>t.outcome===(side==='YES'?'Yes':'No'))||toks[0]||{};
+  if(!tok.token_id)return;
+  try{const ord=await buildOrd(tok.token_id,amt,tok.price||.5,sel.negRisk);pre={ord,amt,side,tid:tok.token_id};$('psr').style.display='flex'}
+  catch{pre=null;$('psr').style.display='none'}
 }
-function schedPS() {
-  if (!sessionWallet) return;
-  document.getElementById('psrow').style.display = 'none';
-  clearTimeout(presignTm);
-  presignTm = setTimeout(doPresign, 150);
-}
+function schedPS(){if(!wallet)return;$('psr').style.display='none';clearTimeout(ptm);ptm=setTimeout(doPresign,150)}
 
-// ── START APP ────────────────────────────────────────────────────────────
-function startApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('wbanner').style.display = workerUrl ? 'none' : 'block';
-  loadHist(); loadBal(); loadMkts();
-  doPing(); clearInterval(pingTm); pingTm = setInterval(doPing, 8000);
+// ── START ────────────────────────────────────────────────────────────────
+function startApp(){
+  $('login').style.display='none';
+  $('app').style.display='block';
+  $('wb').style.display=wUrl?'none':'block';
+  loadHist();loadBal();loadMkts();
+  doPing();clearInterval(pitm);pitm=setInterval(doPing,8000);
 }
 
 // ── TABS ─────────────────────────────────────────────────────────────────
-function switchTab(t) {
-  document.getElementById('tab-m').className = 'tab' + (t==='m'?' active':'');
-  document.getElementById('tab-h').className = 'tab' + (t==='h'?' active':'');
-  document.getElementById('mkt-tab').style.display  = t==='m' ? 'block' : 'none';
-  document.getElementById('hist-tab').style.display = t==='h' ? 'block' : 'none';
+function tab(t){
+  $('tm').className='tab'+(t==='m'?' on':'');
+  $('th').className='tab'+(t==='h'?' on':'');
+  $('pm').className='page'+(t==='m'?' on':'');
+  $('ph').className='page'+(t==='h'?' on':'');
 }
 
 // ── PING ─────────────────────────────────────────────────────────────────
-async function doPing() {
-  const el = document.getElementById('ping');
-  const t0 = Date.now();
-  try {
-    await fetch(ep()+'?path=time', { signal: AbortSignal.timeout(4000) });
-    const ms = Date.now()-t0;
-    el.textContent = ms+'ms';
-    el.className = 'ping '+(ms<120?'g':ms<350?'y':'r');
-  } catch { el.textContent = '—ms'; el.className = 'ping r'; }
+async function doPing(){
+  const el=$('ping'),t0=Date.now();
+  try{
+    await fetch(ep()+'?path=time',{signal:AbortSignal.timeout(4000)});
+    const ms=Date.now()-t0;
+    el.textContent=ms+'ms';el.className='ping '+(ms<120?'g':ms<350?'y':'r');
+  }catch{el.textContent='—ms';el.className='ping r'}
 }
 
 // ── BALANCE ──────────────────────────────────────────────────────────────
-async function loadBal() {
-  const el = document.getElementById('bal');
-  if (!creds?.secret) { el.textContent = '—'; return; }
-  const bal = await walletUSDC(creds.address);
-  el.textContent = bal !== null ? '$'+bal.toFixed(2) : '$—';
+async function loadBal(){
+  const el=$('bal');
+  if(!creds?.secret){el.textContent='—';return}
+  const b=await wUSDC(creds.address);
+  el.textContent=b!==null?'$'+b.toFixed(2):'$—';
 }
-
-async function debugBal() {
-  if (!creds?.secret) { alert('Нет secret — войди через MetaMask'); return; }
-  let out = '=== ДИАГНОСТИКА ===\n\n';
-  try {
-    const ts = String(Math.floor(Date.now()/1000));
-    const sg = await hmac(creds.secret, ts+'GET/balance_allowance?asset_type=USDC');
-    const r  = await fetch('https://clob.polymarket.com/balance_allowance?asset_type=USDC',{
-      headers:{'POLY_ADDRESS':creds.address,'POLY_API_KEY':creds.apiKey,'POLY_SIGNATURE':sg,'POLY_TIMESTAMP':ts,'POLY_PASSPHRASE':creds.passphrase}
-    });
-    out += `[1] Direct ${r.status}: ${(await r.text()).slice(0,120)}\n\n`;
-  } catch(e) { out += `[1] ERROR: ${e.message}\n\n`; }
-  try {
-    const r = await pGet('balance_allowance?asset_type=USDC');
-    out += `[2] Worker ${r.status}: ${(await r.text()).slice(0,120)}\n\n`;
-  } catch(e) { out += `[2] ERROR: ${e.message}\n\n`; }
-  try { const w = await walletUSDC(creds.address); out += `[3] Wallet: $${w?.toFixed(2)??'null'}`; }
-  catch(e) { out += `[3] ERROR: ${e.message}`; }
-  alert(out);
+async function debugBal(){
+  if(!creds?.secret){alert('Нет secret');return}
+  let o='=== ДИАГНОСТИКА ===\n\n';
+  try{const ts=String(Math.floor(Date.now()/1000)),sg=await hmac(creds.secret,ts+'GET/balance_allowance?asset_type=USDC');const r=await fetch('https://clob.polymarket.com/balance_allowance?asset_type=USDC',{headers:{'POLY_ADDRESS':creds.address,'POLY_API_KEY':creds.apiKey,'POLY_SIGNATURE':sg,'POLY_TIMESTAMP':ts,'POLY_PASSPHRASE':creds.passphrase}});o+=`[1] ${r.status}: ${(await r.text()).slice(0,100)}\n\n`}catch(e){o+=`[1] ERR: ${e.message}\n\n`}
+  try{const r=await pGet('balance_allowance?asset_type=USDC');o+=`[2] Worker ${r.status}: ${(await r.text()).slice(0,100)}\n\n`}catch(e){o+=`[2] ERR: ${e.message}\n\n`}
+  try{const b=await wUSDC(creds.address);o+=`[3] Wallet: $${b?.toFixed(2)??'null'}`}catch(e){o+=`[3] ERR: ${e.message}`}
+  alert(o);
 }
-
-async function tw(url, opts, ms=4000) {
-  const c = new AbortController(), t = setTimeout(()=>c.abort(), ms);
-  try { return await fetch(url,{...opts,signal:c.signal}); } finally { clearTimeout(t); }
-}
-
-async function walletUSDC(addr) {
-  const rpcs   = ['https://1rpc.io/matic','https://polygon-bor-rpc.publicnode.com'];
-  const tokens = ['0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359','0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'];
-  const cb = to => JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_call',params:[{to,data:'0x70a08231'+addr.replace('0x','').padStart(64,'0')},'latest']});
-  for (const rpc of rpcs) {
-    try {
-      const opts = {method:'POST',headers:{'Content-Type':'application/json'}};
-      const res  = await Promise.all(tokens.map(async t=>{
-        const r = await tw(rpc,{...opts,body:cb(t)});
-        const j = await r.json();
-        return j.result ? parseInt(j.result,16)/1e6 : 0;
-      }));
+async function wUSDC(addr){
+  const rpcs=['https://1rpc.io/matic','https://polygon-bor-rpc.publicnode.com'];
+  const toks=['0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359','0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'];
+  const cb=to=>JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_call',params:[{to,data:'0x70a08231'+addr.replace('0x','').padStart(64,'0')},'latest']});
+  for(const rpc of rpcs){
+    try{
+      const o={method:'POST',headers:{'Content-Type':'application/json'}};
+      const ctrl=new AbortController();setTimeout(()=>ctrl.abort(),4000);
+      const res=await Promise.all(toks.map(async t=>{const r=await fetch(rpc,{...o,body:cb(t),signal:ctrl.signal});const j=await r.json();return j.result?parseInt(j.result,16)/1e6:0}));
       return res.reduce((a,b)=>a+b,0);
-    } catch { continue; }
-  }
-  return null;
+    }catch{continue}
+  }return null;
 }
 
 // ── MARKETS ──────────────────────────────────────────────────────────────
-async function loadMkts() {
-  try {
-    const r    = await fetch('https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=50');
-    const data = await r.json();
-    allMkts = (Array.isArray(data)?data:[]).map(norm);
-    renderMkts(allMkts);
-  } catch {
-    document.getElementById('mlist').innerHTML = '<div class="empty" style="color:var(--no)">Ошибка загрузки рынков</div>';
-  }
+async function loadMkts(){
+  try{
+    const r=await fetch('https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=50');
+    const d=await r.json();
+    mkts=(Array.isArray(d)?d:[]).map(norm);
+    renderMkts(mkts);
+  }catch{$('ml').innerHTML='<div class="empty" style="color:var(--no)">Ошибка загрузки рынков</div>'}
 }
-
-function renderMkts(list, isSrch=false) {
-  const el  = document.getElementById('mlist');
-  const cnt = document.getElementById('cnt');
-  const shown = isSrch ? list : list.slice(0,50);
-  if (cnt) cnt.textContent = shown.length;
-  if (!shown.length) { el.innerHTML='<div class="empty">Рынков не найдено</div>'; return; }
-  el.innerHTML = shown.map(m => {
-    const toks = m.tokens||[];
-    const yes  = toks.find(t=>t.outcome==='Yes')||toks[0]||{};
-    const no   = toks.find(t=>t.outcome==='No') ||toks[1]||{};
-    const yp   = yes.price!=null ? Math.round(yes.price*100) : 50;
-    const vol  = m.volume ? '$'+(m.volume>=1e6?(m.volume/1e6).toFixed(1)+'M':m.volume>=1e3?(m.volume/1e3).toFixed(0)+'K':m.volume.toFixed(0)) : '';
-    const end  = m.endDate ? new Date(m.endDate).toLocaleDateString('ru-RU',{day:'numeric',month:'short'}) : '';
-    const isSel = selMkt?.condition_id === m.condition_id;
-    return `<div class="mc${isSel?' sel':''}" id="mc-${m.condition_id}" onclick="selectMkt('${m.condition_id}',this)">
+function renderMkts(list,srch=false){
+  const el=$('ml'),cnt=$('scnt');
+  const shown=srch?list:list.slice(0,50);
+  if(cnt)cnt.textContent=shown.length||'';
+  if(!shown.length){el.innerHTML='<div class="empty">Рынков не найдено</div>';return}
+  el.innerHTML=shown.map(m=>{
+    const toks=m.tokens||[];
+    const yes=toks.find(t=>t.outcome==='Yes')||toks[0]||{};
+    const no=toks.find(t=>t.outcome==='No')||toks[1]||{};
+    const yp=yes.price!=null?Math.round(yes.price*100):50;
+    const vol=m.volume?'$'+(m.volume>=1e6?(m.volume/1e6).toFixed(1)+'M':m.volume>=1e3?(m.volume/1e3).toFixed(0)+'K':m.volume.toFixed(0)):'';
+    const end=m.endDate?new Date(m.endDate).toLocaleDateString('ru-RU',{day:'numeric',month:'short'}):'';
+    const isSel=sel?.condition_id===m.condition_id;
+    return`<div class="mc${isSel?' sel':''}" onclick="openSheet('${m.condition_id}',this)">
       <div class="mc-q">${m.question}</div>
       <div class="mc-bar"><div class="mc-bar-y" style="width:${yp}%"></div></div>
-      <div class="mc-row">
-        <span class="pill pill-y">YES ${yes.price!=null?yp+'¢':'—'}</span>
-        <span class="pill pill-n">NO ${no.price!=null?(100-yp)+'¢':'—'}</span>
+      <div class="mc-foot">
+        <span class="pill py">YES ${yes.price!=null?yp+'¢':'—'}</span>
+        <span class="pill pn">NO ${no.price!=null?(100-yp)+'¢':'—'}</span>
         ${vol||end?`<span class="mc-meta">${[vol,end].filter(Boolean).join(' · ')}</span>`:''}
       </div>
     </div>`;
   }).join('');
 }
-
-function doSearch() {
-  const q = document.getElementById('search').value.trim();
-  clearTimeout(searchTm);
-  if (!q) { renderMkts(allMkts); return; }
-  renderMkts(allMkts.filter(m=>m.question.toLowerCase().includes(q.toLowerCase())),true);
-  searchTm = setTimeout(async()=>{
-    try {
-      const r = await fetch(`https://gamma-api.polymarket.com/markets?q=${encodeURIComponent(q)}&active=true&closed=false&limit=100`);
-      const d = await r.json();
-      const mkts = (Array.isArray(d)?d:[]).map(norm);
-      if (mkts.length) renderMkts(mkts,true);
-    } catch {}
-  }, 300);
+function doSearch(){
+  const q=$('si').value.trim();clearTimeout(stm);
+  if(!q){renderMkts(mkts);return}
+  renderMkts(mkts.filter(m=>m.question.toLowerCase().includes(q.toLowerCase())),true);
+  stm=setTimeout(async()=>{
+    try{const r=await fetch(`https://gamma-api.polymarket.com/markets?q=${encodeURIComponent(q)}&active=true&closed=false&limit=100`);const d=await r.json();const ms=(Array.isArray(d)?d:[]).map(norm);if(ms.length)renderMkts(ms,true)}catch{}
+  },300);
 }
-
-function norm(m) {
+function norm(m){
   let ids=[],prs=[],outs=['Yes','No'];
   try{ids=JSON.parse(m.clobTokenIds||'[]')}catch{}
   try{prs=JSON.parse(m.outcomePrices||'[]')}catch{}
   try{outs=JSON.parse(m.outcomes||'["Yes","No"]')}catch{}
-  return {
-    condition_id: m.conditionId||String(m.id),
-    question: m.question, volume: m.volume, endDate: m.endDate, negRisk:!!m.negRisk,
-    tokens: outs.map((o,i)=>({outcome:o, price:parseFloat(prs[i]||0.5), token_id:ids[i]||''}))
-  };
+  return{condition_id:m.conditionId||String(m.id),question:m.question,volume:m.volume,endDate:m.endDate,negRisk:!!m.negRisk,tokens:outs.map((o,i)=>({outcome:o,price:parseFloat(prs[i]||.5),token_id:ids[i]||''}))}
 }
 
 // ── SHEET ────────────────────────────────────────────────────────────────
-function selectMkt(id, el) {
+function openSheet(id,el){
   document.querySelectorAll('.mc').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');
-  selMkt = allMkts.find(m=>m.condition_id===id);
-  selSide = null; presigned = null;
-  const toks = selMkt.tokens||[];
-  const yes  = toks.find(t=>t.outcome==='Yes')||toks[0]||{};
-  const no   = toks.find(t=>t.outcome==='No') ||toks[1]||{};
-  document.getElementById('sq').textContent = selMkt.question;
-  document.getElementById('yp').textContent = yes.price!=null?(yes.price*100).toFixed(0)+'¢':'';
-  document.getElementById('np').textContent = no.price!=null?(no.price*100).toFixed(0)+'¢':'';
-  document.getElementById('btn-y').classList.remove('on');
-  document.getElementById('btn-n').classList.remove('on');
-  document.getElementById('ainp').value = '';
-  document.getElementById('calc').style.display = 'none';
-  document.getElementById('psrow').style.display = 'none';
-  setBetBtn('off', 'Выбери YES или NO');
-  document.getElementById('sheet').classList.add('open');
+  sel=mkts.find(m=>m.condition_id===id);side=null;pre=null;
+  const toks=sel.tokens||[];
+  const yes=toks.find(t=>t.outcome==='Yes')||toks[0]||{};
+  const no=toks.find(t=>t.outcome==='No')||toks[1]||{};
+  $('shq').textContent=sel.question;
+  $('yp').textContent=yes.price!=null?(yes.price*100).toFixed(0)+'¢':'';
+  $('np').textContent=no.price!=null?(no.price*100).toFixed(0)+'¢':'';
+  $('by').classList.remove('on');$('bn').classList.remove('on');
+  $('ainp').value='';$('calc').style.display='none';$('psr').style.display='none';
+  setBet('off','Выбери YES или NO');
+  $('sheet').classList.add('on');$('sbk').classList.add('on');
 }
-
-function closeSheet() {
-  document.getElementById('sheet').classList.remove('open');
+function closeSheet(){
+  $('sheet').classList.remove('on');$('sbk').classList.remove('on');
   document.querySelectorAll('.mc').forEach(c=>c.classList.remove('sel'));
-  selMkt = null; selSide = null; presigned = null;
+  sel=null;side=null;pre=null;
 }
-
-function pick(side) {
-  selSide = side; presigned = null;
-  document.getElementById('btn-y').classList.toggle('on', side==='YES');
-  document.getElementById('btn-n').classList.toggle('on', side==='NO');
-  setBetBtn(side.toLowerCase(), `Поставить ${side}`);
-  updCalc(); schedPS();
+function pick(s){
+  side=s;pre=null;
+  $('by').classList.toggle('on',s==='YES');$('bn').classList.toggle('on',s==='NO');
+  setBet(s.toLowerCase(),`Поставить ${s}`);
+  updCalc();schedPS();
 }
-
-function setAmt(v) {
-  document.getElementById('ainp').value = v;
-  updCalc(); schedPS();
+function setAmt(v){$('ainp').value=v;updCalc();schedPS()}
+function updCalc(){
+  if(!sel||!side)return;
+  const amt=parseFloat($('ainp').value)||0;
+  const toks=sel.tokens||[];
+  const tok=toks.find(t=>t.outcome===(side==='YES'?'Yes':'No'))||(side==='YES'?toks[0]:toks[1])||{};
+  const p=tok.price||.5,c=$('calc');
+  if(amt<=0){c.style.display='none';return}
+  const sh=(amt/p).toFixed(2);
+  $('cs').textContent=sh;$('cp').textContent=(p*100).toFixed(0)+'¢';$('cpy').textContent='$'+sh;
+  c.style.display='block';schedPS();
 }
-
-function updCalc() {
-  if (!selMkt||!selSide) return;
-  const amt  = parseFloat(document.getElementById('ainp').value)||0;
-  const toks = selMkt.tokens||[];
-  const tok  = toks.find(t=>t.outcome===(selSide==='YES'?'Yes':'No'))||(selSide==='YES'?toks[0]:toks[1])||{};
-  const p    = tok.price||0.5;
-  const c    = document.getElementById('calc');
-  if (amt<=0) { c.style.display='none'; return; }
-  const shares = (amt/p).toFixed(2);
-  document.getElementById('cshares').textContent = shares;
-  document.getElementById('cprice').textContent  = (p*100).toFixed(0)+'¢';
-  document.getElementById('cpay').textContent    = '$'+shares;
-  c.style.display = 'block';
-  schedPS();
-}
-
-function setBetBtn(cls, txt) {
-  const b = document.getElementById('btn-bet');
-  b.className = 'btn-bet '+cls;
-  b.textContent = txt;
-  b.disabled = cls==='off';
-}
+function setBet(cls,txt){const b=$('bbtn');b.className='btn-bet '+cls;b.textContent=txt;b.disabled=cls==='off'}
 
 // ── PLACE BET ────────────────────────────────────────────────────────────
-async function placeBet() {
-  if (!selMkt||!selSide) return;
-  const amt = parseFloat(document.getElementById('ainp').value);
-  if (!amt||amt<=0) { alert('Введи сумму'); return; }
-  if (!creds?.secret) { alert('Войди через MetaMask для ставок'); return; }
-  if (!sessionWallet&&!window.ethereum) { alert('Нужен MetaMask или приватный ключ (⚙)'); return; }
-
-  const btn = document.getElementById('btn-bet');
-  btn.disabled = true;
-  document.getElementById('psrow').style.display = 'none';
-  const t0 = Date.now();
-
-  try {
-    const toks = selMkt.tokens||[];
-    const tok  = toks.find(t=>t.outcome===(selSide==='YES'?'Yes':'No'))||(selSide==='YES'?toks[0]:toks[1])||{};
-    if (!tok.token_id) throw new Error('Нет tokenId');
-
-    let orderStruct;
-    if (presigned&&presigned.side===selSide&&presigned.tokenId===tok.token_id&&Math.abs(presigned.amount-amt)<0.01) {
-      orderStruct = presigned.order;
-      btn.textContent = 'Отправляю...';
-    } else {
-      btn.textContent = sessionWallet ? '⚡ Подписываю...' : '✍️ Подпиши...';
-      orderStruct = await buildOrder(tok.token_id, amt, tok.price||0.5, selMkt.negRisk);
-      btn.textContent = 'Отправляю...';
+async function placeBet(){
+  if(!sel||!side)return;
+  const amt=parseFloat($('ainp').value);
+  if(!amt||amt<=0){alert('Введи сумму');return}
+  if(!creds?.secret){alert('Войди через MetaMask для ставок');return}
+  if(!wallet&&!window.ethereum){alert('Нужен MetaMask или приватный ключ (⚙)');return}
+  const btn=$('bbtn');btn.disabled=true;$('psr').style.display='none';
+  const t0=Date.now();
+  try{
+    const toks=sel.tokens||[];
+    const tok=toks.find(t=>t.outcome===(side==='YES'?'Yes':'No'))||(side==='YES'?toks[0]:toks[1])||{};
+    if(!tok.token_id)throw new Error('Нет tokenId');
+    let ord;
+    if(pre&&pre.side===side&&pre.tid===tok.token_id&&Math.abs(pre.amt-amt)<.01){ord=pre.ord;btn.textContent='Отправляю...'}
+    else{btn.textContent=wallet?'⚡ Подписываю...':'✍️ Подпиши...';ord=await buildOrd(tok.token_id,amt,tok.price||.5,sel.negRisk);btn.textContent='Отправляю...'}
+    const res=await pPost('order',{order:ord,owner:creds.proxyWallet||creds.address,orderType:'FOK'});
+    const ms=Date.now()-t0,txt=await res.text();let data={};try{data=JSON.parse(txt)}catch{}
+    if(res.ok&&(data.success||data.orderID||data.order)){
+      addHist(sel.question,side,amt,ms,'ok');pre=null;loadBal();
+      btn.disabled=false;btn.textContent=`✓ ${ms}ms`;
+      setTimeout(()=>{setBet(side.toLowerCase(),`Поставить ${side}`);schedPS()},2500);
+    }else{
+      const em=data.error||data.errorMsg||(txt.includes('<html')?'CF WAF':`HTTP ${res.status}`);
+      addHist(sel.question,side,amt,ms,'err');
+      btn.disabled=false;btn.textContent=`✗ ${String(em).slice(0,44)}`;
+      console.error('order:',res.status,txt.slice(0,300));
+      setTimeout(()=>setBet(side.toLowerCase(),`Поставить ${side}`),4000);
     }
-
-    const body = {order:orderStruct, owner:creds.proxyWallet||creds.address, orderType:'FOK'};
-    const res  = await pPost('order', body, creds);
-    const ms   = Date.now()-t0;
-    const text = await res.text();
-    let data = {}; try{data=JSON.parse(text)}catch{}
-
-    if (res.ok&&(data.success||data.orderID||data.order)) {
-      addHist(selMkt.question, selSide, amt, ms, 'ok');
-      presigned = null; loadBal();
-      btn.disabled = false; btn.textContent = `✓ ${ms}ms`;
-      setTimeout(()=>{ setBetBtn(selSide.toLowerCase(),`Поставить ${selSide}`); schedPS(); }, 2500);
-    } else {
-      const e = data.error||data.errorMsg||(text.includes('<html')?'CF WAF':`HTTP ${res.status}`);
-      addHist(selMkt.question, selSide, amt, ms, 'err');
-      btn.disabled = false; btn.textContent = `✗ ${String(e).slice(0,45)}`;
-      console.error('Order:', res.status, text.slice(0,300));
-      setTimeout(()=>setBetBtn(selSide.toLowerCase(),`Поставить ${selSide}`), 4000);
-    }
-  } catch(e) {
-    btn.disabled = false;
-    btn.textContent = e.code===4001 ? '✗ Отклонено' : `✗ ${e.message?.slice(0,40)||'Ошибка'}`;
-    if (e.code!==4001) console.error('placeBet:', e);
+  }catch(e){
+    btn.disabled=false;
+    btn.textContent=e.code===4001?'✗ Отклонено':`✗ ${e.message?.slice(0,40)||'Ошибка'}`;
+    if(e.code!==4001)console.error(e);
   }
 }
 
 // ── HISTORY ──────────────────────────────────────────────────────────────
-function addHist(q, side, amt, ms, st) {
-  history.unshift({q, side, amt, ms, st, t: new Date().toLocaleTimeString()});
-  localStorage.setItem('poly_hist', JSON.stringify(history.slice(0,50)));
+function addHist(q,s,a,ms,st){
+  hist.unshift({q,s,a,ms,st,t:new Date().toLocaleTimeString()});
+  localStorage.setItem('poly_h',JSON.stringify(hist.slice(0,50)));
   renderHist();
 }
-function loadHist() {
-  try { history = JSON.parse(localStorage.getItem('poly_hist')||'[]'); } catch { history=[]; }
-  renderHist();
-}
-function renderHist() {
-  const el = document.getElementById('hlist');
-  if (!history.length) { el.innerHTML='<div class="empty">История пуста</div>'; return; }
-  el.innerHTML = history.slice(0,30).map(h=>`
-    <div class="hi">
-      <div style="flex:1;min-width:0">
-        <div class="hi-q">${h.q.slice(0,70)}${h.q.length>70?'…':''}</div>
-        <div class="hi-meta">$${h.amt} · <span class="${h.st==='ok'?'hi-ms-ok':'hi-ms-err'}">${h.st==='ok'?'✓':'✗'} ${h.ms}ms</span> · ${h.t}</div>
-      </div>
-      <span class="hi-pill ${h.side.toLowerCase()}">${h.side}</span>
-    </div>`).join('');
+function loadHist(){try{hist=JSON.parse(localStorage.getItem('poly_h')||'[]')}catch{hist=[]}renderHist()}
+function renderHist(){
+  const el=$('hl');
+  if(!hist.length){el.innerHTML='<div class="empty">История пуста</div>';return}
+  el.innerHTML=hist.slice(0,30).map(h=>`<div class="hi"><div class="hi-left"><div class="hi-q">${h.q.slice(0,68)}${h.q.length>68?'…':''}</div><div class="hi-meta">$${h.a} · <span class="${h.st==='ok'?'ok':'er'}">${h.st==='ok'?'✓':'✗'} ${h.ms}ms</span> · ${h.t}</div></div><span class="hpill ${h.s.toLowerCase()}">${h.s}</span></div>`).join('');
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────
-function openSet() {
-  document.getElementById('wu-inp').value = workerUrl;
-  document.getElementById('set-overlay').style.display = 'flex';
-}
-function closeSet() { document.getElementById('set-overlay').style.display = 'none'; }
-function maybeCloseSet(e) { if (e.target===document.getElementById('set-overlay')) closeSet(); }
-function saveWorker() {
-  const u = document.getElementById('wu-inp').value.trim().replace(/\/$/,'');
-  workerUrl = u;
-  if (u) localStorage.setItem('poly_worker_url',u); else localStorage.removeItem('poly_worker_url');
-  document.getElementById('wbanner').style.display = u?'none':'block';
-  closeSet(); loadBal(); doPing();
+function openSet(){$('wui').value=wUrl;$('setbk').classList.add('on')}
+function closeSet(){$('setbk').classList.remove('on')}
+function maybeClose(e){if(e.target===$('setbk'))closeSet()}
+function saveW(){
+  const u=$('wui').value.trim().replace(/\/$/,'');wUrl=u;
+  if(u)localStorage.setItem('poly_wu',u);else localStorage.removeItem('poly_wu');
+  $('wb').style.display=u?'none':'block';closeSet();loadBal();doPing();
 }
 
 // ── KEYBOARD ─────────────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
-  if (document.getElementById('set-overlay').style.display==='flex') return;
-  if (!selMkt) return;
-  if (e.key==='y'||e.key==='Y') { e.preventDefault(); pick('YES'); }
-  if (e.key==='n'||e.key==='N') { e.preventDefault(); pick('NO'); }
-  if (e.key==='Escape') closeSheet();
-  if (e.key==='Enter'&&selSide) { const b=document.getElementById('btn-bet'); if(!b.disabled){e.preventDefault();placeBet();} }
-  if (e.key==='1') setAmt(1);
-  if (e.key==='5') setAmt(5);
-  if (e.key==='0') setAmt(10);
+document.addEventListener('keydown',e=>{
+  if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
+  if($('setbk').classList.contains('on'))return;
+  if(!sel)return;
+  if(e.key==='y'||e.key==='Y'){e.preventDefault();pick('YES')}
+  if(e.key==='n'||e.key==='N'){e.preventDefault();pick('NO')}
+  if(e.key==='Escape')closeSheet();
+  if(e.key==='Enter'&&side){const b=$('bbtn');if(!b.disabled){e.preventDefault();placeBet()}}
+  if(e.key==='1')setAmt(1);if(e.key==='5')setAmt(5);if(e.key==='0')setAmt(10);
 });
 
 // ── INIT ─────────────────────────────────────────────────────────────────
 (function(){
-  const s = readCreds();
-  if (s) {
-    creds = s;
-    ['inp-addr','inp-key','inp-secret','inp-pass'].forEach((id,i)=>{
-      document.getElementById(id).value = [s.address,s.apiKey,s.secret,s.passphrase][i]||'';
-    });
+  const s=rdCreds();
+  if(s){
+    creds=s;
+    [['ia','address'],['ik','apiKey'],['is','secret'],['ip','passphrase']].forEach(([id,k])=>{$(id).value=s[k]||''});
     startApp();
   }
-  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)&&!window.ethereum) {
-    document.getElementById('mm-btn').innerHTML='🦊 Открыть в MetaMask';
+  if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)&&!window.ethereum){
+    $('mm-btn').innerHTML='🦊 Открыть в MetaMask';
   }
 })();
 </script>
