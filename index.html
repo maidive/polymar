@@ -973,6 +973,34 @@ function startBattle(){
   _openBattle();
 }
 
+function connectQWs(){
+  if(qWs){try{qWs.close()}catch{}qWs=null;}
+  qHistory=[];
+  if(!qMkt)return;
+  const assets=(qMkt.tokens||[]).map(t=>t.token_id).filter(Boolean);
+  if(!assets.length)return;
+  const wsEl=$('qbws');
+  try{
+    const ws=new WebSocket('wss://ws-subscriptions-clob.polymarket.com/ws/market');
+    qWs=ws;
+    ws.onopen=()=>{
+      ws.send(JSON.stringify({auth:{apiKey:''},type:'Market',assets_ids:assets}));
+      if(wsEl){wsEl.textContent='●';wsEl.style.color='var(--yes)';wsEl.title='WS подключён';}
+    };
+    ws.onmessage=e=>{
+      try{
+        const msgs=JSON.parse(e.data);
+        (Array.isArray(msgs)?msgs:[msgs]).forEach(msg=>{
+          const p=parseFloat(msg.price);
+          if(!isNaN(p)&&p>0&&p<1){qHistory.push({t:Date.now(),price:p});if(qHistory.length>300)qHistory.shift();}
+        });
+      }catch{}
+    };
+    ws.onerror=()=>{if(wsEl){wsEl.textContent='○';wsEl.style.color='';}};
+    ws.onclose=()=>{if(wsEl){wsEl.textContent='○';wsEl.style.color='';}};
+  }catch(e){console.warn('WS',e);}
+}
+
 function _openBattle(){
   $('qbn0').textContent=qNames[0];$('qbn1').textContent=qNames[1];
   $('qbstake').textContent='$'+qAmt;
