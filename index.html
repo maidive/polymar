@@ -280,6 +280,76 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 .keys{text-align:center;font-size:10.5px;color:var(--t3);font-family:var(--mono);margin-top:10px}
 .k{display:inline-block;background:var(--s2);border:1px solid var(--b2);border-radius:4px;padding:1px 5px;font-size:9.5px;margin:0 2px;color:var(--t2)}
 
+/* ══ QUICK BET ═══════════════════════════════════════════════════════ */
+/* setup page */
+.q-setup{padding:14px}
+.q-setup-label{font-size:10.5px;color:var(--t3);letter-spacing:.07em;text-transform:uppercase;font-weight:600;margin-bottom:7px}
+.q-amt-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.q-amt-btn{background:var(--s2);border:1px solid var(--b1);border-radius:9px;color:var(--t2);font-size:13px;font-weight:500;padding:9px 0;text-align:center;cursor:pointer;transition:all .15s}
+.q-amt-btn:hover,.q-amt-btn.on{border-color:var(--acc);color:var(--acc2);background:var(--adim)}
+.q-amt-custom{width:100%;background:var(--s2);border:1.5px solid var(--b2);border-radius:10px;padding:11px 13px;color:var(--t1);font-family:var(--mono);font-size:14px;outline:none;margin-bottom:14px;transition:all .15s}
+.q-amt-custom:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--adim)}
+.qmc{background:var(--s1);border:1px solid var(--b1);border-radius:11px;padding:11px 13px;cursor:pointer;transition:all .15s;margin-bottom:6px}
+.qmc:hover{border-color:var(--b2);background:var(--s2)}
+.qmc.on{border-color:var(--acc);background:var(--s2);box-shadow:0 0 0 1px var(--acc)}
+.qmc-q{font-size:12.5px;font-weight:500;line-height:1.4;margin-bottom:5px}
+.qmc-p{font-size:11px;color:var(--t3);font-family:var(--mono)}
+.q-names-row{display:none;gap:8px;margin:12px 0}
+.q-names-row.on{display:flex;flex-direction:column}
+.q-name-inp{background:var(--s2);border:1.5px solid var(--b2);border-radius:10px;padding:11px 13px;color:var(--t1);font-size:14px;font-weight:600;outline:none;transition:all .15s;text-transform:uppercase}
+.q-name-inp:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--adim)}
+.q-name-inp::placeholder{text-transform:none;font-weight:400;color:var(--t3)}
+.q-name-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.q-start-btn{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--acc),#c026d3);color:#fff;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px var(--aglow);transition:filter .15s,transform .1s}
+.q-start-btn:hover{filter:brightness(1.08)}.q-start-btn:active{transform:scale(.98)}
+.q-start-btn:disabled{opacity:.4;cursor:not-allowed}
+.q-warn{font-size:12px;color:var(--no);margin-top:8px;text-align:center;display:none}
+/* battle overlay */
+#qbattle{position:fixed;inset:0;display:none;flex-direction:column;z-index:90;background:var(--bg);max-width:500px;margin:0 auto}
+#qbattle.on{display:flex}
+.qb-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--b1);flex-shrink:0;gap:10px}
+.qb-back{background:none;border:1px solid var(--b2);color:var(--t2);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;transition:all .15s;flex-shrink:0}
+.qb-back:hover{color:var(--t1);border-color:var(--t2)}
+.qb-stake{font-size:17px;font-weight:700;color:var(--acc2);background:var(--adim);border:1px solid rgba(124,58,237,.3);border-radius:12px;padding:7px 18px;cursor:pointer}
+.qb-ws{font-size:18px;transition:color .3s}
+.qb-arena{flex:1;display:flex;position:relative;overflow:hidden}
+.qb-divider{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--b2);transform:translateX(-50%);z-index:1}
+.qb-player{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:background .2s,opacity .2s;user-select:none;-webkit-user-select:none;position:relative;gap:12px}
+.qb-player.L{background:rgba(16,185,129,.04)}
+.qb-player.R{background:rgba(244,63,94,.04)}
+.qb-player.selected.L{background:rgba(16,185,129,.18)}
+.qb-player.selected.R{background:rgba(244,63,94,.18)}
+.qb-player.dimmed{opacity:.2;pointer-events:none}
+@keyframes qflash{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
+.qb-player.selected .qb-name{animation:qflash .35s ease}
+.qb-name{font-size:20px;font-weight:900;text-align:center;padding:0 16px;line-height:1.2;letter-spacing:-.02em;text-transform:uppercase}
+.qb-player.L .qb-name{color:var(--yes)}.qb-player.R .qb-name{color:var(--no)}
+.qb-side-label{font-size:11px;font-family:var(--mono);color:var(--t3);letter-spacing:.05em}
+.qb-player.L .qb-side-label{color:rgba(16,185,129,.6)}.qb-player.R .qb-side-label{color:rgba(244,63,94,.6)}
+.qb-status{font-size:12px;font-family:var(--mono);color:var(--t2);min-height:18px;text-align:center;padding:0 8px}
+/* analytics overlay */
+#qanal{position:fixed;inset:0;display:none;flex-direction:column;z-index:91;background:var(--bg);max-width:500px;margin:0 auto}
+#qanal.on{display:flex}
+.qa-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--b1);flex-shrink:0}
+.qa-result{font-size:14px;font-weight:700}
+.qa-result.ok{color:var(--yes)}.qa-result.err{color:var(--no)}
+.qa-ms{font-family:var(--mono);font-size:12px;color:var(--t3)}
+.qa-arena{flex:1;display:flex;overflow:hidden}
+.qa-half{flex:1;display:flex;flex-direction:column;padding:12px 10px;position:relative;transition:opacity .3s}
+.qa-half.dimmed{opacity:.15}
+.qa-half.L{border-right:1px solid var(--b1)}
+.qa-pname{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.qa-half.L .qa-pname{color:var(--yes)}.qa-half.R .qa-pname{color:var(--no)}
+.qa-delta-big{font-size:22px;font-weight:800;font-family:var(--mono);margin-bottom:4px}
+.qa-delta-big.early{color:var(--yes)}.qa-delta-big.late{color:var(--no)}.qa-delta-big.neutral{color:var(--t2)}
+.qa-delta-sub{font-size:11px;color:var(--t3);margin-bottom:8px}
+.qa-chart-wrap{flex:1;position:relative;min-height:80px}
+.qa-chart-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
+.qa-nodata{font-size:11px;color:var(--t3);text-align:center;padding:20px 0}
+.qa-bottom{padding:14px 16px;border-top:1px solid var(--b1);flex-shrink:0}
+.qa-next-btn{width:100%;padding:14px;border-radius:12px;border:none;background:var(--acc);color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 18px var(--aglow);transition:filter .15s}
+.qa-next-btn:hover{filter:brightness(1.08)}
+
 /* ══ SETTINGS SHEET ══════════════════════════════════════════════════ */
 .set-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:60}
 .set-back.on{display:flex;align-items:flex-end;justify-content:center}
@@ -343,6 +413,7 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
   <div class="tabs">
     <div class="tab on" id="tm" onclick="tab('m')">Рынки</div>
     <div class="tab" id="th" onclick="tab('h')">История</div>
+    <div class="tab" id="tq" onclick="tab('q')">⚡ Матч</div>
   </div>
 
   <!-- markets page -->
@@ -365,6 +436,35 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
   <!-- history page -->
   <div class="page" id="ph">
     <div id="hl"><div class="empty">История пуста</div></div>
+  </div>
+
+  <!-- quick bet setup page -->
+  <div class="page" id="pq">
+    <div class="q-setup">
+      <div class="q-setup-label">Ставка</div>
+      <div class="q-amt-row">
+        <div class="q-amt-btn" onclick="qSetAmt(5)">$5</div>
+        <div class="q-amt-btn on" onclick="qSetAmt(10)">$10</div>
+        <div class="q-amt-btn" onclick="qSetAmt(25)">$25</div>
+        <div class="q-amt-btn" onclick="qSetAmt(50)">$50</div>
+      </div>
+      <input class="q-amt-custom" id="qamt" type="number" value="10" min="1" step="1" placeholder="Своя сумма $" oninput="qAmt=parseFloat(this.value)||10">
+      <div class="q-setup-label">Выбери матч</div>
+      <div class="srow" style="margin-bottom:10px">
+        <span class="sico">⌕</span>
+        <input type="text" id="qsi" placeholder="Поиск матча..." oninput="qDoSearch()" style="padding-left:38px">
+      </div>
+      <div id="qmlist"></div>
+      <div class="q-names-row" id="qnrow">
+        <div class="q-setup-label" style="margin-bottom:4px">Имена игроков</div>
+        <div class="q-name-row2">
+          <input class="q-name-inp" id="qn0" placeholder="Левый (YES)">
+          <input class="q-name-inp" id="qn1" placeholder="Правый (NO)">
+        </div>
+        <button class="q-start-btn" id="qstartbtn" onclick="startBattle()">▶ Начать матч</button>
+        <div class="q-warn" id="qwarn">Войди и добавь приватный ключ в ⚙ для быстрых ставок</div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -418,6 +518,53 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
       <button class="bsave" onclick="saveW()">Сохранить</button>
       <button class="bcanc" onclick="closeSet()">Закрыть</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ BATTLE OVERLAY ════════════════════════════════════════════════════ -->
+<div id="qbattle">
+  <div class="qb-top">
+    <button class="qb-back" onclick="exitBattle()">← Назад</button>
+    <div class="qb-stake" id="qbstake" onclick="qEditStake()">$10</div>
+    <div class="qb-ws" id="qbws" title="WebSocket цен">○</div>
+  </div>
+  <div class="qb-arena">
+    <div class="qb-player L" id="qbp0" onclick="quickBet(0)">
+      <div class="qb-name" id="qbn0">ИГРОК 1</div>
+      <div class="qb-side-label">YES</div>
+      <div class="qb-status" id="qbst0"></div>
+    </div>
+    <div class="qb-divider"></div>
+    <div class="qb-player R" id="qbp1" onclick="quickBet(1)">
+      <div class="qb-name" id="qbn1">ИГРОК 2</div>
+      <div class="qb-side-label">NO</div>
+      <div class="qb-status" id="qbst1"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ANALYTICS OVERLAY ══════════════════════════════════════════════════ -->
+<div id="qanal">
+  <div class="qa-top">
+    <div class="qa-result" id="qares"></div>
+    <div class="qa-ms" id="qams"></div>
+  </div>
+  <div class="qa-arena">
+    <div class="qa-half L" id="qah0">
+      <div class="qa-pname" id="qahn0">ИГРОК 1</div>
+      <div class="qa-delta-big neutral" id="qadelta0">—</div>
+      <div class="qa-delta-sub" id="qasub0"></div>
+      <div class="qa-chart-wrap"><canvas id="qchart0"></canvas><div class="qa-nodata" id="qnd0"></div></div>
+    </div>
+    <div class="qa-half R" id="qah1">
+      <div class="qa-pname" id="qahn1">ИГРОК 2</div>
+      <div class="qa-delta-big neutral" id="qadelta1">—</div>
+      <div class="qa-delta-sub" id="qasub1"></div>
+      <div class="qa-chart-wrap"><canvas id="qchart1"></canvas><div class="qa-nodata" id="qnd1"></div></div>
+    </div>
+  </div>
+  <div class="qa-bottom">
+    <button class="qa-next-btn" onclick="qNextPoint()">Следующая точка →</button>
   </div>
 </div>
 
@@ -576,8 +723,11 @@ function startApp(){
 function tab(t){
   $('tm').className='tab'+(t==='m'?' on':'');
   $('th').className='tab'+(t==='h'?' on':'');
+  $('tq').className='tab'+(t==='q'?' on':'');
   $('pm').className='page'+(t==='m'?' on':'');
   $('ph').className='page'+(t==='h'?' on':'');
+  $('pq').className='page'+(t==='q'?' on':'');
+  if(t==='q')qInitTab();
 }
 
 // ── PING ─────────────────────────────────────────────────────────────────
@@ -772,6 +922,241 @@ function saveW(){
   const u=$('wui').value.trim().replace(/\/$/,'');wUrl=u;
   if(u)localStorage.setItem('poly_wu',u);else localStorage.removeItem('poly_wu');
   $('wb').style.display=u?'none':'block';closeSet();loadBal();doPing();
+}
+
+// ── QUICK BET ────────────────────────────────────────────────────────────
+let qMkt=null,qAmt=10,qNames=['YES','NO'];
+let qLocked=false,qWs=null;
+let qHistory=[],qBetTime=null,qBetPrice=null,qBetSide=null,qBetMs=null;
+
+function qInitTab(){
+  if(!$('qmlist').children.length)qDoSearch();
+  const w=$('qwarn');
+  w.style.display=(creds&&wallet)?'none':'block';
+}
+
+function qSetAmt(v){
+  qAmt=v;$('qamt').value=v;
+  document.querySelectorAll('.q-amt-btn').forEach(b=>{b.classList.toggle('on',b.textContent==='$'+v)});
+}
+
+function qDoSearch(){
+  const q=($('qsi').value||'').trim().toLowerCase();
+  const list=q?mkts.filter(m=>m.question.toLowerCase().includes(q)):mkts.slice(0,25);
+  $('qmlist').innerHTML=list.slice(0,18).map(m=>{
+    const toks=m.tokens||[];const yes=toks.find(t=>t.outcome==='Yes')||{};
+    const yp=yes.price!=null?Math.round(yes.price*100):50;
+    const isSel=qMkt?.condition_id===m.condition_id;
+    return`<div class="qmc${isSel?' on':''}" onclick="qSelMkt('${m.condition_id}')">
+      <div class="qmc-q">${m.question.slice(0,90)}</div>
+      <div class="qmc-p">YES ${yp}¢ · NO ${100-yp}¢</div>
+    </div>`;
+  }).join('')||'<div class="empty" style="padding:18px">Не найдено</div>';
+}
+
+function qSelMkt(id){
+  qMkt=mkts.find(m=>m.condition_id===id);if(!qMkt)return;
+  const names=parsePlayers(qMkt.question);
+  $('qn0').value=names[0];$('qn1').value=names[1];
+  $('qnrow').classList.add('on');
+  qDoSearch();
+}
+
+function parsePlayers(q){
+  let m;
+  m=q.match(/Will (.+?) (?:beat|defeat|win against|win over) (.+?)[\?\.]*$/i);
+  if(m)return[m[1].trim(),m[2].trim()];
+  m=q.match(/^(.+?)\s+to win\s+vs\.?\s+(.+?)[\?\.]*$/i);
+  if(m)return[m[1].trim(),m[2].trim()];
+  m=q.match(/^(.+?)\s+vs\.?\s+(.+?)[\?\.]*$/i);
+  if(m)return[m[1].trim(),m[2].trim()];
+  return['YES','NO'];
+}
+
+function startBattle(){
+  if(!qMkt)return;
+  qAmt=parseFloat($('qamt').value)||10;
+  qNames[0]=($('qn0').value||'YES').trim().toUpperCase();
+  qNames[1]=($('qn1').value||'NO').trim().toUpperCase();
+  $('qbn0').textContent=qNames[0];$('qbn1').textContent=qNames[1];
+  $('qbstake').textContent='$'+qAmt;
+  qReset();
+  connectQWs();
+  $('qbattle').classList.add('on');
+}
+
+function exitBattle(){
+  $('qbattle').classList.remove('on');
+  $('qanal').classList.remove('on');
+  if(qWs){qWs.close();qWs=null;}
+}
+
+function qEditStake(){
+  const v=prompt('Сумма ставки ($):',qAmt);
+  const n=parseFloat(v);if(n>0){qAmt=n;$('qbstake').textContent='$'+n;$('qamt').value=n;}
+}
+
+function connectQWs(){
+  if(qWs){try{qWs.close()}catch{}qWs=null;}
+  const toks=qMkt?.tokens||[];
+  const yes=toks.find(t=>t.outcome==='Yes')||toks[0];
+  qHistory=[];
+  if(!yes?.token_id){$('qbws').textContent='○';$('qbws').style.color='var(--t3)';return;}
+  try{
+    qWs=new WebSocket('wss://ws-subscriptions-clob.polymarket.com/ws/market');
+    qWs.onopen=()=>{
+      qWs.send(JSON.stringify({assets_ids:[yes.token_id],type:'market'}));
+      $('qbws').textContent='●';$('qbws').style.color='var(--yes)';
+    };
+    qWs.onmessage=(e)=>{
+      try{
+        const d=JSON.parse(e.data);
+        let price=null;
+        if(d.event_type==='book'&&d.asks?.length)price=parseFloat(d.asks[0][0]);
+        else if(d.best_ask)price=parseFloat(d.best_ask);
+        else if(d.price)price=parseFloat(d.price);
+        if(price>0&&price<1){
+          qHistory.push({t:Date.now(),price});
+          if(qHistory.length>600)qHistory.shift();
+        }
+      }catch{}
+    };
+    qWs.onerror=()=>{$('qbws').textContent='○';$('qbws').style.color='var(--no)';};
+    qWs.onclose=()=>{$('qbws').textContent='○';$('qbws').style.color='var(--t3)';};
+  }catch{$('qbws').textContent='○';$('qbws').style.color='var(--t3)';}
+}
+
+async function quickBet(side){
+  if(qLocked)return;
+  if(!qMkt||!creds?.secret){alert('Нужен аккаунт и API key');return;}
+  if(!wallet&&!window.ethereum){alert('Добавь приватный ключ в ⚙ для быстрых ставок');return;}
+  qLocked=true;qBetSide=side;
+  const t0=Date.now();qBetTime=t0;
+  const other=1-side;
+  $('qbp'+side).className='qb-player '+(side===0?'L':'R')+' selected';
+  $('qbp'+other).className='qb-player '+(other===0?'L':'R')+' dimmed';
+  $('qbst'+side).textContent='⚡ ставлю...';
+  const toks=qMkt.tokens||[];
+  const tok=toks.find(t=>t.outcome===(side===0?'Yes':'No'))||toks[side]||{};
+  const lastPt=qHistory.length?qHistory[qHistory.length-1]:null;
+  qBetPrice=lastPt?lastPt.price:(tok.price||0.5);
+  try{
+    if(!tok.token_id)throw new Error('Нет tokenId');
+    const ord=await buildOrd(tok.token_id,qAmt,tok.price||0.5,qMkt.negRisk);
+    const res=await pPost('order',{order:ord,owner:creds.proxyWallet||creds.address,orderType:'FOK'});
+    qBetMs=Date.now()-t0;
+    const txt=await res.text();let data={};try{data=JSON.parse(txt)}catch{}
+    const ok=res.ok&&(data.success||data.orderID||data.order);
+    addHist(qMkt.question,side===0?'YES':'NO',qAmt,qBetMs,ok?'ok':'err');
+    $('qbst'+side).textContent=ok?`✓ ${qBetMs}ms`:`✗ ошибка`;
+    setTimeout(()=>showQAnalytics(side,ok),1000);
+  }catch(e){
+    qBetMs=Date.now()-t0;
+    $('qbst'+side).textContent='✗ '+(e.message||'Ошибка').slice(0,22);
+    setTimeout(()=>qReset(),2500);
+  }
+}
+
+function showQAnalytics(side,ok){
+  const other=1-side;
+  $('qahn0').textContent=qNames[0];$('qahn1').textContent=qNames[1];
+  $('qah'+side).className='qa-half '+(side===0?'L':'R');
+  $('qah'+other).className='qa-half '+(other===0?'L':'R')+' dimmed';
+  const res=$('qares');
+  res.textContent=ok?`✓ Куплено $${qAmt}`:'✗ Ордер отклонён';
+  res.className='qa-result '+(ok?'ok':'err');
+  $('qams').textContent=`${qBetMs}ms`;
+  // hide unused half chart
+  $('qchart'+other).style.display='none';
+  $('qnd'+other).style.display='none';
+  // find next price movement after bet
+  const afterBet=qHistory.filter(p=>p.t>qBetTime);
+  const nextMove=afterBet.find(p=>Math.abs(p.price-qBetPrice)>0.004);
+  const deltaEl=$('qadelta'+side),subEl=$('qasub'+side),ndEl=$('qnd'+side);
+  if(nextMove){
+    const ms=nextMove.t-qBetTime;
+    const up=nextMove.price>qBetPrice;
+    deltaEl.textContent=(ok&&up?'+':'')+ms+'ms';
+    deltaEl.className='qa-delta-big '+(ok&&up?'early':'late');
+    subEl.textContent=ok&&up?'до роста цены ⚡':(up?'цена выросла':'цена упала');
+    ndEl.style.display='none';
+    requestAnimationFrame(()=>drawQChart($('qchart'+side),qHistory,qBetTime,qBetPrice));
+  }else if(qHistory.length>2){
+    deltaEl.textContent=qBetMs+'ms';
+    deltaEl.className='qa-delta-big neutral';
+    subEl.textContent='ждём движения...';
+    ndEl.style.display='none';
+    requestAnimationFrame(()=>drawQChart($('qchart'+side),qHistory,qBetTime,qBetPrice));
+  }else{
+    deltaEl.textContent='—';deltaEl.className='qa-delta-big neutral';
+    subEl.textContent='';ndEl.textContent='Нет данных WS';ndEl.style.display='block';
+    $('qchart'+side).style.display='none';
+  }
+  $('qanal').classList.add('on');
+}
+
+function drawQChart(canvas,history,betTime,betPrice){
+  if(!canvas)return;
+  const rect=canvas.getBoundingClientRect();
+  const W=canvas.width=Math.max(rect.width||10,10);
+  const H=canvas.height=Math.max(rect.height||10,10);
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  canvas.style.display='block';
+  if(history.length<2){return;}
+  const now=Date.now();
+  const tStart=Math.min(history[0].t,betTime-5000);
+  const tEnd=Math.max(now,betTime+12000);
+  const tRange=tEnd-tStart||1;
+  const prices=history.map(p=>p.price);
+  let pMin=Math.min(...prices)-0.03,pMax=Math.max(...prices)+0.03;
+  if(pMax-pMin<0.06){pMin-=0.02;pMax+=0.02;}
+  const pRange=pMax-pMin||0.1;
+  const pad={t:8,b:18,l:6,r:6};
+  const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const toX=t=>pad.l+(t-tStart)/tRange*cW;
+  const toY=p=>pad.t+(1-(p-pMin)/pRange)*cH;
+  // fill under line
+  ctx.beginPath();
+  history.forEach((pt,i)=>{const x=toX(pt.t),y=toY(pt.price);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.lineTo(toX(history[history.length-1].t),pad.t+cH);
+  ctx.lineTo(toX(history[0].t),pad.t+cH);
+  ctx.closePath();ctx.fillStyle='rgba(124,58,237,.12)';ctx.fill();
+  // price line
+  ctx.beginPath();ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;ctx.lineJoin='round';
+  history.forEach((pt,i)=>{const x=toX(pt.t),y=toY(pt.price);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.stroke();
+  // bet price horizontal dash
+  const by=toY(betPrice);
+  ctx.beginPath();ctx.strokeStyle='rgba(167,139,250,.35)';ctx.lineWidth=1;ctx.setLineDash([2,4]);
+  ctx.moveTo(pad.l,by);ctx.lineTo(W-pad.r,by);ctx.stroke();ctx.setLineDash([]);
+  // bet time vertical line
+  const bx=toX(betTime);
+  if(bx>=pad.l&&bx<=W-pad.r){
+    ctx.beginPath();ctx.strokeStyle='#f43f5e';ctx.lineWidth=2;ctx.setLineDash([3,3]);
+    ctx.moveTo(bx,pad.t);ctx.lineTo(bx,pad.t+cH);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f43f5e';ctx.font=`9px 'JetBrains Mono',monospace`;ctx.textAlign='center';
+    ctx.fillText('↑ клик',bx,H-2);
+  }
+  // highlight price move after bet
+  const firstMove=history.find(p=>p.t>betTime&&Math.abs(p.price-betPrice)>0.004);
+  if(firstMove){
+    const mx=toX(firstMove.t);const up=firstMove.price>betPrice;
+    ctx.fillStyle=up?'rgba(16,185,129,.1)':'rgba(244,63,94,.1)';
+    ctx.fillRect(bx,pad.t,mx-bx,cH);
+  }
+}
+
+function qNextPoint(){
+  $('qanal').classList.remove('on');
+  $('qchart0').style.display='block';$('qchart1').style.display='block';
+  qReset();
+}
+
+function qReset(){
+  qLocked=false;qBetTime=null;qBetPrice=null;qBetSide=null;qBetMs=null;
+  $('qbp0').className='qb-player L';$('qbp1').className='qb-player R';
+  $('qbst0').textContent='';$('qbst1').textContent='';
 }
 
 // ── KEYBOARD ─────────────────────────────────────────────────────────────
