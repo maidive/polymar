@@ -300,21 +300,19 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 .qb-player{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:background .2s,opacity .2s;user-select:none;-webkit-user-select:none;position:relative;gap:12px}
 .qb-player.L{background:rgba(16,185,129,.04)}
 .qb-player.R{background:rgba(244,63,94,.04)}
-.qb-player.selected.L{background:rgba(16,185,129,.25);border-right:2px solid var(--yes)}
-.qb-player.selected.R{background:rgba(244,63,94,.25);border-left:2px solid var(--no)}
-.qb-player.dimmed{opacity:.15;pointer-events:none}
-@keyframes qflash{0%{transform:scale(1)}40%{transform:scale(1.06)}100%{transform:scale(1)}}
-@keyframes qexpand{0%{flex:1}100%{flex:3}}
-.qb-player.selected{animation:qexpand .15s ease forwards}
-.qb-player.selected .qb-name{animation:qflash .35s ease}
-.qb-player.dimmed{flex:0.3!important;transition:flex .15s ease}
 .qb-name{font-size:20px;font-weight:900;text-align:center;padding:0 16px;line-height:1.2;letter-spacing:-.02em;text-transform:uppercase}
 .qb-player.L .qb-name{color:var(--yes)}.qb-player.R .qb-name{color:var(--no)}
-.qb-player.selected.L .qb-name{color:#fff;text-shadow:0 0 30px rgba(16,185,129,.8)}
-.qb-player.selected.R .qb-name{color:#fff;text-shadow:0 0 30px rgba(244,63,94,.8)}
 .qb-side-label{font-size:11px;font-family:var(--mono);color:var(--t3);letter-spacing:.05em}
 .qb-player.L .qb-side-label{color:rgba(16,185,129,.6)}.qb-player.R .qb-side-label{color:rgba(244,63,94,.6)}
 .qb-status{font-size:13px;font-family:var(--mono);color:var(--t2);min-height:20px;text-align:center;padding:0 8px;font-weight:600}
+/* Лок-оверлей — перекрывает ВСЮ арену на 1 сек */
+#qlock{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20;gap:12px}
+#qlock.on{display:flex}
+#qlock.yes{background:rgba(16,185,129,.45)}
+#qlock.no{background:rgba(244,63,94,.45)}
+.qlock-name{font-size:32px;font-weight:900;color:#fff;text-transform:uppercase;text-align:center;padding:0 20px;letter-spacing:-.02em;text-shadow:0 2px 20px rgba(0,0,0,.4)}
+.qlock-ico{font-size:40px}
+.qlock-ms{font-family:var(--mono);font-size:13px;color:rgba(255,255,255,.7);min-height:18px}
 /* analytics overlay */
 #qanal{position:fixed;inset:0;display:none;flex-direction:column;z-index:91;background:var(--bg);max-width:500px;margin:0 auto}
 #qanal.on{display:flex}
@@ -508,6 +506,12 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
       <div class="qb-name" id="qbn1">ИГРОК 2</div>
       <div class="qb-side-label">NO</div>
       <div class="qb-status" id="qbst1"></div>
+    </div>
+    <!-- Лок-оверлей: перекрывает арену на 1 сек после тапа -->
+    <div id="qlock">
+      <div class="qlock-name" id="qlock-name"></div>
+      <div class="qlock-ico" id="qlock-ico">⚡</div>
+      <div class="qlock-ms" id="qlock-ms"></div>
     </div>
   </div>
 </div>
@@ -1036,19 +1040,21 @@ function setQReady(ready){
 // ── TAP — INSTANT because order is pre-signed ─────────────────────────────
 async function quickBet(side){
   if(qLocked)return;
-  // Visual lock FIRST — always, before any checks
   qLocked=true;qBetSide=side;
   const t0=Date.now();qBetTime=t0;
-  const other=1-side;
-  $('qbp'+side).className='qb-player '+(side===0?'L':'R')+' selected';
-  $('qbp'+other).className='qb-player '+(other===0?'L':'R')+' dimmed';
-  $('qbst'+side).textContent='⚡';
-  // Haptic feedback on mobile
-  try{navigator.vibrate&&navigator.vibrate(30)}catch{}
-  // Auth check after visual
+  // Показываем лок-оверлей МГНОВЕННО — закрывает всю арену от повторных тапов
+  const lock=$('qlock');
+  $('qlock-name').textContent=qNames[side]||['YES','NO'][side];
+  $('qlock-ico').textContent='⚡';
+  $('qlock-ms').textContent='';
+  lock.className='on '+(side===0?'yes':'no');
+  // Haptic
+  try{navigator.vibrate&&navigator.vibrate(40)}catch{}
+  // Auth check после визуала
   if(!qMkt||!creds?.secret){
-    $('qbst'+side).textContent='✗ Войди в аккаунт';
-    setTimeout(()=>qReset(),2000);return;
+    $('qlock-ico').textContent='✗';
+    $('qlock-ms').textContent='Нужен аккаунт';
+    setTimeout(()=>{lock.className='';qLocked=false;},2000);return;
   }
   // Record price at bet time
   const lastPt=qHistory.length?qHistory[qHistory.length-1]:null;
@@ -1072,15 +1078,18 @@ async function quickBet(side){
     const txt=await res.text();let data={};try{data=JSON.parse(txt)}catch{}
     ok=res.ok&&(data.success||data.orderID||data.order);
     addHist(qMkt.question,side===0?'YES':'NO',qAmt,qBetMs,ok?'ok':'err');
-    $('qbst'+side).textContent=ok?`✓ ${qBetMs}ms`:`✗ err`;
-    // Start pre-signing next orders immediately after this one fires
+    // Показываем результат на оверлее
+    $('qlock-ico').textContent=ok?'✓':'✗';
+    $('qlock-ms').textContent=qBetMs+'ms';
     setTimeout(preSignBoth,80);
-    setTimeout(()=>showQAnalytics(side,ok),1000);
+    // Через 1 сек — убираем оверлей и показываем аналитику
+    setTimeout(()=>{lock.className='';showQAnalytics(side,ok);},1000);
   }catch(e){
     qBetMs=Date.now()-t0;
-    $('qbst'+side).textContent='✗ '+(e.message||'Ошибка').slice(0,20);
+    $('qlock-ico').textContent='✗';
+    $('qlock-ms').textContent=(e.message||'Ошибка').slice(0,22);
     setTimeout(preSignBoth,200);
-    setTimeout(()=>qReset(),2500);
+    setTimeout(()=>{lock.className='';qReset();},2000);
   }
 }
 
@@ -1182,7 +1191,7 @@ function qNextPoint(){
 
 function qReset(){
   qLocked=false;qBetTime=null;qBetPrice=null;qBetSide=null;qBetMs=null;
-  $('qbp0').className='qb-player L';$('qbp1').className='qb-player R';
+  $('qlock').className='';
   $('qbst0').textContent='';$('qbst1').textContent='';
 }
 
