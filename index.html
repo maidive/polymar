@@ -169,14 +169,11 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 .mc:nth-child(7){animation-delay:.21s}.mc:nth-child(8){animation-delay:.24s}
 
 .mc-q{font-size:13.5px;font-weight:500;line-height:1.4;margin-bottom:10px;color:var(--t1)}
-.mc-bar{height:4px;border-radius:4px;background:var(--b1);margin-bottom:9px;overflow:hidden}
-.mc-bar-y{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--yes),#059669);transition:width .4s}
-.mc-bar-n{height:100%;border-radius:4px;background:var(--no);float:right}
-.mc-foot{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.pill{font-family:var(--mono);font-size:12px;font-weight:500;padding:4px 11px;border-radius:7px}
-.py{background:var(--ydim);color:var(--yes);border:1px solid rgba(16,185,129,.2)}
-.pn{background:var(--ndim);color:var(--no);border:1px solid rgba(244,63,94,.2)}
-.mc-meta{font-size:11px;color:var(--t3);margin-left:auto;font-family:var(--mono)}
+.mc-prob{position:relative;height:26px;border-radius:8px;background:var(--ndim);overflow:hidden;margin-bottom:8px}
+.mc-prob-y{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#059669,var(--yes));border-radius:8px 0 0 8px;transition:width .4s}
+.mc-plbl-y{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;z-index:1;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.mc-plbl-n{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;font-weight:700;color:var(--no);z-index:1}
+.mc-meta{font-size:11px;color:var(--t3);font-family:var(--mono);text-align:right}
 
 /* history */
 @keyframes hi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -218,7 +215,6 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 }
 .sheet.on{transform:translateY(0)}
 
-.sh-handle{width:36px;height:3px;background:var(--b2);border-radius:3px;margin:12px auto 16px}
 .sh-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
 .sh-q{font-size:14px;font-weight:600;line-height:1.4;color:var(--t1);flex:1}
 .sh-x{background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s}
@@ -378,8 +374,7 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 
 <!-- ══ BET SHEET (fixed, not in flow) ═══════════════════════════════════ -->
 <div class="sheet" id="sheet">
-  <div class="sh-handle"></div>
-  <div class="sh-head">
+  <div class="sh-head" style="padding-top:16px">
     <div class="sh-q" id="shq"></div>
     <button class="sh-x" onclick="closeSheet()">×</button>
   </div>
@@ -556,8 +551,15 @@ async function doPresign(){
   const toks=sel.tokens||[];
   const tok=toks.find(t=>t.outcome===(side==='YES'?'Yes':'No'))||toks[0]||{};
   if(!tok.token_id)return;
-  try{const ord=await buildOrd(tok.token_id,amt,tok.price||.5,sel.negRisk);pre={ord,amt,side,tid:tok.token_id};$('psr').style.display='flex'}
-  catch{pre=null;$('psr').style.display='none'}
+  try{
+    const ord=await buildOrd(tok.token_id,amt,tok.price||.5,sel.negRisk);
+    const owner=creds.proxyWallet||creds.address;
+    const body=JSON.stringify({order:ord,owner,orderType:'FOK'});
+    const p=qp(creds);p.set('path','order');
+    const url=`${ep()}?${p}`;
+    pre={ord,body,url,amt,side,tid:tok.token_id};
+    $('psr').style.display='flex';
+  }catch{pre=null;$('psr').style.display='none'}
 }
 function schedPS(){if(!wallet)return;$('psr').style.display='none';clearTimeout(ptm);ptm=setTimeout(doPresign,150)}
 
@@ -641,12 +643,12 @@ function renderMkts(list,srch=false){
     const isSel=sel?.condition_id===m.condition_id;
     return`<div class="mc${isSel?' sel':''}" onclick="openSheet('${m.condition_id}',this)">
       <div class="mc-q">${m.question}</div>
-      <div class="mc-bar"><div class="mc-bar-y" style="width:${yp}%"></div></div>
-      <div class="mc-foot">
-        <span class="pill py">YES ${yes.price!=null?yp+'¢':'—'}</span>
-        <span class="pill pn">NO ${no.price!=null?(100-yp)+'¢':'—'}</span>
-        ${vol||end?`<span class="mc-meta">${[vol,end].filter(Boolean).join(' · ')}</span>`:''}
+      <div class="mc-prob">
+        <div class="mc-prob-y" style="width:${yp}%"></div>
+        <span class="mc-plbl-y">YES ${yp}¢</span>
+        <span class="mc-plbl-n">NO ${100-yp}¢</span>
       </div>
+      ${vol||end?`<div class="mc-meta">${[vol,end].filter(Boolean).join(' · ')}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -720,10 +722,16 @@ async function placeBet(){
     const toks=sel.tokens||[];
     const tok=toks.find(t=>t.outcome===(side==='YES'?'Yes':'No'))||(side==='YES'?toks[0]:toks[1])||{};
     if(!tok.token_id)throw new Error('Нет tokenId');
-    let ord;
-    if(pre&&pre.side===side&&pre.tid===tok.token_id&&Math.abs(pre.amt-amt)<.01){ord=pre.ord;btn.textContent='Отправляю...'}
-    else{btn.textContent=wallet?'⚡ Подписываю...':'✍️ Подпиши...';ord=await buildOrd(tok.token_id,amt,tok.price||.5,sel.negRisk);btn.textContent='Отправляю...'}
-    const res=await pPost('order',{order:ord,owner:creds.proxyWallet||creds.address,orderType:'FOK'});
+    let res;
+    if(pre&&pre.side===side&&pre.tid===tok.token_id&&Math.abs(pre.amt-amt)<.01&&pre.url){
+      btn.textContent='Отправляю...';
+      res=await fetch(pre.url,{method:'POST',headers:{'Content-Type':'application/json'},body:pre.body});
+    }else{
+      btn.textContent=wallet?'⚡ Подписываю...':'✍️ Подпиши...';
+      const ord=await buildOrd(tok.token_id,amt,tok.price||.5,sel.negRisk);
+      btn.textContent='Отправляю...';
+      res=await pPost('order',{order:ord,owner:creds.proxyWallet||creds.address,orderType:'FOK'});
+    }
     const ms=Date.now()-t0,txt=await res.text();let data={};try{data=JSON.parse(txt)}catch{}
     if(res.ok&&(data.success||data.orderID||data.order)){
       addHist(sel.question,side,amt,ms,'ok');pre=null;loadBal();
