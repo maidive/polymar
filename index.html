@@ -506,6 +506,7 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
       <div class="qb-side-label">NO</div>
       <div class="qb-status" id="qbst1"></div>
     </button>
+    <div id="qlock"></div>
   </div>
 </div>
 
@@ -1036,15 +1037,14 @@ async function quickBet(side){
   qLocked=true;qBetSide=side;
   const t0=Date.now();qBetTime=t0;
   const other=1-side;
-  const selBtn=$('qbp'+side), othBtn=$('qbp'+other);
-  // === МГНОВЕННЫЙ ЛОК: inline стили (без disabled — он вызывает серый цвет браузера) ===
-  selBtn.style.cssText='flex:3;background:'+(side===0?'rgba(16,185,129,.5)':'rgba(244,63,94,.5)')+';border-color:'+(side===0?'var(--yes)':'var(--no)')+';box-shadow:0 0 40px '+(side===0?'var(--yglow)':'var(--nglow)')+';pointer-events:none;transition:flex .15s,background .15s,box-shadow .15s;';
-  othBtn.style.cssText='flex:1;opacity:0.1;pointer-events:none;transition:flex .15s,opacity .15s;';
-  $('qbst'+side).textContent='⚡';
+  // === МГНОВЕННЫЙ ЛОК: оверлей #qlock покрывает обе кнопки, блокирует тапы ===
+  const lock=$('qlock');
+  lock.innerHTML=`<div class="qlock-ico">⚡</div><div class="qlock-name">${qNames[side]}</div><div class="qlock-ms" id="qlms"></div>`;
+  lock.className='on '+(side===0?'yes':'no');
   try{navigator.vibrate&&navigator.vibrate(40)}catch{}
   // Auth check после визуала
   if(!qMkt||!creds?.secret){
-    $('qbst'+side).textContent='✗ Войди в аккаунт';
+    const msEl=$('qlms');if(msEl)msEl.textContent='✗ Войди в аккаунт';
     setTimeout(()=>qReset(),2000);return;
   }
   // Record price at bet time
@@ -1069,14 +1069,12 @@ async function quickBet(side){
     const txt=await res.text();let data={};try{data=JSON.parse(txt)}catch{}
     ok=res.ok&&(data.success||data.orderID||data.order);
     addHist(qMkt.question,side===0?'YES':'NO',qAmt,qBetMs,ok?'ok':'err');
-    // Показываем результат на оверлее
-    $('qbst'+side).textContent=(ok?'✓ ':'✗ ')+qBetMs+'ms';
+    const msEl=$('qlms');if(msEl)msEl.textContent=(ok?'✓ ':'✗ ')+qBetMs+'ms';
     setTimeout(preSignBoth,80);
-    // Через 1 сек — сбрасываем стили и показываем аналитику
     setTimeout(()=>{showQAnalytics(side,ok);},1000);
   }catch(e){
     qBetMs=Date.now()-t0;
-    $('qbst'+side).textContent='✗ '+(e.message||'Ошибка').slice(0,18);
+    const msEl=$('qlms');if(msEl)msEl.textContent='✗ '+(e.message||'Ошибка').slice(0,18);
     setTimeout(preSignBoth,200);
     setTimeout(()=>qReset(),2000);
   }
@@ -1180,9 +1178,7 @@ function qNextPoint(){
 
 function qReset(){
   qLocked=false;qBetTime=null;qBetPrice=null;qBetSide=null;qBetMs=null;
-  const p0=$('qbp0'),p1=$('qbp1');
-  if(p0){p0.style.cssText='';p0.disabled=false;}
-  if(p1){p1.style.cssText='';p1.disabled=false;}
+  $('qlock').className='';
   $('qbst0').textContent='';$('qbst1').textContent='';
 }
 
