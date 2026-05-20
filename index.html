@@ -477,6 +477,11 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
     <div class="pk-st" id="pkst"></div>
     <button class="bsave g" style="width:100%" onclick="applyPK()">Подключить ключ</button>
     <div class="sep"></div>
+    <div class="stitle">Proxy Wallet (необязательно)</div>
+    <div class="sdesc">Если ставки отклоняются — введи адрес прокси-кошелька Polymarket (0x...). Он отличается от EOA.</div>
+    <div class="field"><input id="pwi" type="text" placeholder="0x... proxy wallet address" style="font-family:var(--mono);font-size:12px"></div>
+    <button class="bsave" style="width:100%;margin-bottom:10px" onclick="saveProxy()">Сохранить proxy wallet</button>
+    <div class="sep"></div>
     <div class="stitle">CF Worker URL</div>
     <div class="field" style="margin-bottom:8px">
       <input id="wui" type="text" placeholder="https://polybot.YOUR.workers.dev" style="font-family:var(--mono);font-size:12.5px">
@@ -642,7 +647,11 @@ async function buildOrd(tokenId,uAmt,price,negRisk){
   const eoa=creds.address,lp=Math.min(price*1.05,.999);
   const ma=String(Math.round(uAmt*1e6)),ta=String(Math.round(uAmt/lp*1e6));
   const con=negRisk?'0xC5d563A36AE78145C45a50134d48A1215220f80a':'0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
-  const msg={salt:String(Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)),maker:creds.proxyWallet||eoa,signer:eoa,taker:'0x0000000000000000000000000000000000000000',tokenId,makerAmount:ma,takerAmount:ta,expiration:'0',nonce:'0',feeRateBps:'0',side:0,signatureType:0};
+  const proxy=creds.proxyWallet&&creds.proxyWallet.toLowerCase()!==eoa.toLowerCase()?creds.proxyWallet:null;
+  const maker=proxy||eoa;
+  // signatureType: 0=EOA, 1=POLY_PROXY (when maker is proxy, signer is eoa)
+  const signatureType=proxy?1:0;
+  const msg={salt:String(Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)),maker,signer:eoa,taker:'0x0000000000000000000000000000000000000000',tokenId,makerAmount:ma,takerAmount:ta,expiration:'0',nonce:'0',feeRateBps:'0',side:0,signatureType};
   const dom={name:'Polymarket CTF Exchange',version:'1',chainId:137,verifyingContract:con};
   const types={Order:[{name:'salt',type:'uint256'},{name:'maker',type:'address'},{name:'signer',type:'address'},{name:'taker',type:'address'},{name:'tokenId',type:'uint256'},{name:'makerAmount',type:'uint256'},{name:'takerAmount',type:'uint256'},{name:'expiration',type:'uint256'},{name:'nonce',type:'uint256'},{name:'feeRateBps',type:'uint256'},{name:'side',type:'uint8'},{name:'signatureType',type:'uint8'}]};
   const signature=wallet?await wallet.signTypedData(dom,types,msg):await window.ethereum.request({method:'eth_signTypedData_v4',params:[eoa,JSON.stringify({domain:dom,types,primaryType:'Order',message:msg})]});
@@ -685,11 +694,20 @@ function startApp(){
   $('login').style.display='none';
   $('app').style.display='block';
   $('wb').style.display=wUrl?'none':'block';
-  loadHist();loadBal();loadMkts();
+  loadHist();loadBal();loadMkts();fetchProfile();
   doPing();clearInterval(pitm);pitm=setInterval(doPing,8000);
-  // Restore saved stake amount
   const saved=localStorage.getItem('q_amt');
   if(saved)qSetAmt(parseFloat(saved)||10);
+}
+
+async function fetchProfile(){
+  if(!creds)return;
+  try{
+    const r=await pGet('profile');
+    const d=await r.json();
+    const pw=d.proxyWalletAddress||d.proxyWallet||d.proxy_wallet;
+    if(pw&&pw!==creds.address){creds.proxyWallet=pw;saveCreds(creds);console.log('[profile] proxyWallet',pw);}
+  }catch(e){console.warn('[profile]',e);}
 }
 
 function editStakeCustom(){
@@ -886,7 +904,14 @@ function renderHist(){
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────
-function openSet(){$('wui').value=wUrl;$('setbk').classList.add('on')}
+function openSet(){$('wui').value=wUrl;$('pwi').value=creds?.proxyWallet||'';$('setbk').classList.add('on')}
+function saveProxy(){
+  const v=$('pwi').value.trim();
+  if(!creds)return;
+  if(v&&v.startsWith('0x')&&v.length>=40){creds.proxyWallet=v;saveCreds(creds);alert('Proxy wallet сохранён: '+v.slice(0,10)+'...');}
+  else if(!v){delete creds.proxyWallet;saveCreds(creds);alert('Proxy wallet удалён');}
+  else alert('Неверный адрес');
+}
 function closeSet(){$('setbk').classList.remove('on')}
 function maybeClose(e){if(e.target===$('setbk'))closeSet()}
 function saveW(){
@@ -1099,11 +1124,13 @@ async function quickBet(side){
     }
     qBetMs=Date.now()-t0;
     const txt=await res.text();let data={};try{data=JSON.parse(txt)}catch{}
-    ok=res.ok&&(data.success||data.orderID||data.order);
+    ok=res.ok&&(data.success===true||(data.orderID||data.order));
+    const apiErr=data.errorMsg||data.error||data.message||(res.ok?'FOK не заполнен':'HTTP '+res.status);
+    console.log('[order]',res.status,txt.slice(0,300));
     addHist(qMkt.question,side===0?'YES':'NO',qAmt,qBetMs,ok?'ok':'err');
     const msEl=$('qlms');if(msEl)msEl.textContent=(ok?'✓ ':'✗ ')+qBetMs+'ms';
     setTimeout(preSignBoth,80);
-    setTimeout(()=>{showQAnalytics(side,ok);},1000);
+    setTimeout(()=>{showQAnalytics(side,ok,ok?null:apiErr);},1000);
   }catch(e){
     qBetMs=Date.now()-t0;
     const msEl=$('qlms');if(msEl)msEl.textContent='✗ '+(e.message||'Ошибка').slice(0,18);
@@ -1112,13 +1139,13 @@ async function quickBet(side){
   }
 }
 
-function showQAnalytics(side,ok){
+function showQAnalytics(side,ok,errMsg){
   const other=1-side;
   $('qahn0').textContent=qNames[0];$('qahn1').textContent=qNames[1];
   $('qah'+side).className='qa-half '+(side===0?'L':'R');
   $('qah'+other).className='qa-half '+(other===0?'L':'R')+' dimmed';
   const res=$('qares');
-  res.textContent=ok?`✓ Куплено $${qAmt}`:'✗ Ордер отклонён';
+  res.textContent=ok?`✓ Куплено $${qAmt}`:'✗ '+(errMsg||'Ордер отклонён');
   res.className='qa-result '+(ok?'ok':'err');
   $('qams').textContent=`${qBetMs}ms`;
   // hide unused half chart
