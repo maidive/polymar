@@ -495,24 +495,17 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
     <div class="qb-stake" id="qbstake" onclick="qEditStake()" title="Нажми чтобы изменить ставку">$10</div>
     <div class="qb-ws" id="qbws" title="Статус: готов к ставке">○</div>
   </div>
-  <div class="qb-arena">
-    <div class="qb-player L" id="qbp0" onclick="quickBet(0)">
+  <div class="qb-arena" id="qbarena">
+    <button class="qb-player L" id="qbp0" onclick="quickBet(0)">
       <div class="qb-name" id="qbn0">ИГРОК 1</div>
       <div class="qb-side-label">YES</div>
       <div class="qb-status" id="qbst0"></div>
-    </div>
-    <div class="qb-divider"></div>
-    <div class="qb-player R" id="qbp1" onclick="quickBet(1)">
+    </button>
+    <button class="qb-player R" id="qbp1" onclick="quickBet(1)">
       <div class="qb-name" id="qbn1">ИГРОК 2</div>
       <div class="qb-side-label">NO</div>
       <div class="qb-status" id="qbst1"></div>
-    </div>
-    <!-- Лок-оверлей: перекрывает арену на 1 сек после тапа -->
-    <div id="qlock">
-      <div class="qlock-name" id="qlock-name"></div>
-      <div class="qlock-ico" id="qlock-ico">⚡</div>
-      <div class="qlock-ms" id="qlock-ms"></div>
-    </div>
+    </button>
   </div>
 </div>
 
@@ -1042,19 +1035,17 @@ async function quickBet(side){
   if(qLocked)return;
   qLocked=true;qBetSide=side;
   const t0=Date.now();qBetTime=t0;
-  // Показываем лок-оверлей МГНОВЕННО — закрывает всю арену от повторных тапов
-  const lock=$('qlock');
-  $('qlock-name').textContent=qNames[side]||['YES','NO'][side];
-  $('qlock-ico').textContent='⚡';
-  $('qlock-ms').textContent='';
-  lock.className='on '+(side===0?'yes':'no');
-  // Haptic
+  const other=1-side;
+  const selBtn=$('qbp'+side), othBtn=$('qbp'+other);
+  // === МГНОВЕННЫЙ ЛОК: inline стили (без disabled — он вызывает серый цвет браузера) ===
+  selBtn.style.cssText='flex:3;background:'+(side===0?'rgba(16,185,129,.5)':'rgba(244,63,94,.5)')+';border-color:'+(side===0?'var(--yes)':'var(--no)')+';box-shadow:0 0 40px '+(side===0?'var(--yglow)':'var(--nglow)')+';pointer-events:none;transition:flex .15s,background .15s,box-shadow .15s;';
+  othBtn.style.cssText='flex:1;opacity:0.1;pointer-events:none;transition:flex .15s,opacity .15s;';
+  $('qbst'+side).textContent='⚡';
   try{navigator.vibrate&&navigator.vibrate(40)}catch{}
   // Auth check после визуала
   if(!qMkt||!creds?.secret){
-    $('qlock-ico').textContent='✗';
-    $('qlock-ms').textContent='Нужен аккаунт';
-    setTimeout(()=>{lock.className='';qLocked=false;},2000);return;
+    $('qbst'+side).textContent='✗ Войди в аккаунт';
+    setTimeout(()=>qReset(),2000);return;
   }
   // Record price at bet time
   const lastPt=qHistory.length?qHistory[qHistory.length-1]:null;
@@ -1079,17 +1070,15 @@ async function quickBet(side){
     ok=res.ok&&(data.success||data.orderID||data.order);
     addHist(qMkt.question,side===0?'YES':'NO',qAmt,qBetMs,ok?'ok':'err');
     // Показываем результат на оверлее
-    $('qlock-ico').textContent=ok?'✓':'✗';
-    $('qlock-ms').textContent=qBetMs+'ms';
+    $('qbst'+side).textContent=(ok?'✓ ':'✗ ')+qBetMs+'ms';
     setTimeout(preSignBoth,80);
-    // Через 1 сек — убираем оверлей и показываем аналитику
-    setTimeout(()=>{lock.className='';showQAnalytics(side,ok);},1000);
+    // Через 1 сек — сбрасываем стили и показываем аналитику
+    setTimeout(()=>{showQAnalytics(side,ok);},1000);
   }catch(e){
     qBetMs=Date.now()-t0;
-    $('qlock-ico').textContent='✗';
-    $('qlock-ms').textContent=(e.message||'Ошибка').slice(0,22);
+    $('qbst'+side).textContent='✗ '+(e.message||'Ошибка').slice(0,18);
     setTimeout(preSignBoth,200);
-    setTimeout(()=>{lock.className='';qReset();},2000);
+    setTimeout(()=>qReset(),2000);
   }
 }
 
@@ -1191,7 +1180,9 @@ function qNextPoint(){
 
 function qReset(){
   qLocked=false;qBetTime=null;qBetPrice=null;qBetSide=null;qBetMs=null;
-  $('qlock').className='';
+  const p0=$('qbp0'),p1=$('qbp1');
+  if(p0){p0.style.cssText='';p0.disabled=false;}
+  if(p1){p1.style.cssText='';p1.disabled=false;}
   $('qbst0').textContent='';$('qbst1').textContent='';
 }
 
