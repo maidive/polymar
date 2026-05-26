@@ -387,7 +387,7 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
     <div class="hdr-l">
       <div class="aicon">⚡</div>
       <div class="aname">Polybot</div>
-      <div class="ping" id="ping">—ms</div>
+      <div class="ping" id="ping" title="">—ms</div>
     </div>
     <div class="hdr-r">
       <div class="bal" id="bal" onclick="loadBal()" ondblclick="debugBal()" title="клик = обновить">$—</div>
@@ -546,9 +546,9 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 
 <script>
 const PROXY='https://polymarrepo.vercel.app/api/proxy';
-// Миграция: убираем старый Cloudflare Worker URL
-const _oldWorker='https://plain-violet-81f6.hairmakerpre.workers.dev';
-if(localStorage.getItem('poly_wu')===_oldWorker)localStorage.removeItem('poly_wu');
+// Сбрасываем любой не-Vercel прокси URL из localStorage
+const _savedProxy=localStorage.getItem('poly_wu');
+if(_savedProxy&&!_savedProxy.includes('vercel.app'))localStorage.removeItem('poly_wu');
 let wUrl=localStorage.getItem('poly_wu')||PROXY;
 let creds=null,wallet=null,pre=null;
 let mkts=[],sel=null,side=null,hist=[],stm=null,ptm=null,pitm=null;
@@ -752,10 +752,15 @@ function tab(t){
 // ── PING ─────────────────────────────────────────────────────────────────
 async function doPing(){
   const el=$('ping'),t0=Date.now();
+  const proxyUrl=ep();
+  const isVercel=proxyUrl.includes('vercel.app');
+  el.title='Proxy: '+proxyUrl;
   try{
-    await fetch(ep()+'?path=time',{signal:AbortSignal.timeout(4000)});
+    await fetch(proxyUrl+'?path=time',{signal:AbortSignal.timeout(4000)});
     const ms=Date.now()-t0;
-    el.textContent=ms+'ms';el.className='ping '+(ms<120?'g':ms<350?'y':'r');
+    el.textContent=ms+'ms'+(isVercel?' ✓':'');
+    el.className='ping '+(ms<120?'g':ms<350?'y':'r');
+    if(!isVercel)console.warn('[proxy] Using non-Vercel proxy:',proxyUrl);
   }catch{el.textContent='—ms';el.className='ping r'}
 }
 

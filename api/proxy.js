@@ -18,6 +18,25 @@ export default async function handler(req, res) {
   const path   = url.searchParams.get('path');
   const api    = url.searchParams.get('api');
 
+  if (path === '_ip') {
+    const r1 = await fetch('https://api.ipify.org?format=json');
+    const { ip } = await r1.json();
+    const r2 = await fetch(`https://ipwho.is/${ip}`);
+    const geo = await r2.json();
+    return res.status(200).json({ outboundIP: ip, country: geo.country, country_code: geo.country_code, org: geo.connection?.org });
+  }
+
+  if (path === '_test_order') {
+    // Test if order endpoint is geoblocked — send minimal invalid order
+    const r = await fetch('https://clob.polymarket.com/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Origin': 'https://polymarket.com' },
+      body: JSON.stringify({ test: true })
+    });
+    const body = await r.text();
+    return res.status(200).json({ status: r.status, body: body.slice(0, 300) });
+  }
+
   if (!path) return res.status(400).json({ error: 'No path' });
 
   const decoded = decodeURIComponent(path);
