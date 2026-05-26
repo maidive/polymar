@@ -545,7 +545,10 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 </div>
 
 <script>
-const PROXY='https://plain-violet-81f6.hairmakerpre.workers.dev';
+const PROXY='https://polymarrepo.vercel.app/api/proxy';
+// Миграция: убираем старый Cloudflare Worker URL
+const _oldWorker='https://plain-violet-81f6.hairmakerpre.workers.dev';
+if(localStorage.getItem('poly_wu')===_oldWorker)localStorage.removeItem('poly_wu');
 let wUrl=localStorage.getItem('poly_wu')||PROXY;
 let creds=null,wallet=null,pre=null;
 let mkts=[],sel=null,side=null,hist=[],stm=null,ptm=null,pitm=null;

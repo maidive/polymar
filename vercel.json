@@ -1,8 +1,13 @@
 {
   "functions": {
+    "api/proxy.js": {
+      "memory": 256,
+      "maxDuration": 10
+    },
     "api/markets.js": {
       "memory": 256,
       "maxDuration": 10
     }
-  }
+  },
+  "regions": ["fra1"]
 }

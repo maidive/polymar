@@ -10,6 +10,12 @@ export default {
 
     const url = new URL(request.url);
     const path = url.searchParams.get('path');
+    if (path === '_ip') {
+      const ipResp = await fetch('https://api.ipify.org?format=json');
+      const ipData = await ipResp.json();
+      return new Response(JSON.stringify({ outboundIP: ipData.ip, colo: request.cf?.colo, country: request.cf?.country }), { headers: cors });
+    }
+
     if (!path) return new Response(JSON.stringify({ error: 'No path' }), { status: 400, headers: cors });
 
     const api     = url.searchParams.get('api');
