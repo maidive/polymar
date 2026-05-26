@@ -639,8 +639,14 @@ function qp(c=creds){
   if(c.passphrase)p.set('passphrase',c.passphrase);
   return p;
 }
-async function pGet(path,c=creds){const p=qp(c);p.set('path',path);return fetch(`${ep()}?${p}`)}
-async function pPost(path,body,c=creds){const p=qp(c);p.set('path',path);return fetch(`${ep()}?${p}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
+const CLOB='https://clob.polymarket.com/';
+async function polyHdrs(method,path,body='',c=creds){
+  const ts=String(Math.floor(Date.now()/1000));
+  const sg=await hmac(c.secret,ts+method+'/'+path+body);
+  return{'Content-Type':'application/json','POLY_ADDRESS':c.address,'POLY_API_KEY':c.apiKey,'POLY_SIGNATURE':sg,'POLY_TIMESTAMP':ts,'POLY_PASSPHRASE':c.passphrase};
+}
+async function pGet(path,c=creds){return fetch(CLOB+path,{headers:await polyHdrs('GET',path,'',c)})}
+async function pPost(path,body,c=creds){const b=JSON.stringify(body);return fetch(CLOB+path,{method:'POST',headers:await polyHdrs('POST',path,b,c),body:b})}
 
 // ── CRYPTO ───────────────────────────────────────────────────────────────
 async function hmac(secret,msg){
@@ -695,9 +701,8 @@ async function doPresign(){
     const ord=await buildOrd(tok.token_id,amt,tok.price||.5,sel.negRisk);
     const owner=creds.proxyWallet||creds.address;
     const body=JSON.stringify({order:ord,owner,orderType:'FOK'});
-    const p=qp(creds);p.set('path','order');
-    const url=`${ep()}?${p}`;
-    pre={ord,body,url,amt,side,tid:tok.token_id};
+    const hdrs=await polyHdrs('POST','order',body);
+    pre={ord,body,url:CLOB+'order',hdrs,amt,side,tid:tok.token_id};
     $('psr').style.display='flex';
   }catch{pre=null;$('psr').style.display='none'}
 }
@@ -752,15 +757,12 @@ function tab(t){
 // ── PING ─────────────────────────────────────────────────────────────────
 async function doPing(){
   const el=$('ping'),t0=Date.now();
-  const proxyUrl=ep();
-  const isVercel=proxyUrl.includes('vercel.app');
-  el.title='Proxy: '+proxyUrl;
+  el.title='Direct: clob.polymarket.com';
   try{
-    await fetch(proxyUrl+'?path=time',{signal:AbortSignal.timeout(4000)});
+    await fetch(CLOB+'time',{signal:AbortSignal.timeout(4000)});
     const ms=Date.now()-t0;
-    el.textContent=ms+'ms'+(isVercel?' ✓':'');
+    el.textContent=ms+'ms';
     el.className='ping '+(ms<120?'g':ms<350?'y':'r');
-    if(!isVercel)console.warn('[proxy] Using non-Vercel proxy:',proxyUrl);
   }catch{el.textContent='—ms';el.className='ping r'}
 }
 
@@ -895,7 +897,7 @@ async function placeBet(){
     let res;
     if(pre&&pre.side===side&&pre.tid===tok.token_id&&Math.abs(pre.amt-amt)<.01&&pre.url){
       btn.textContent='Отправляю...';
-      res=await fetch(pre.url,{method:'POST',headers:{'Content-Type':'application/json'},body:pre.body});
+      res=await fetch(pre.url,{method:'POST',headers:pre.hdrs,body:pre.body});
     }else{
       btn.textContent=wallet?'⚡ Подписываю...':'✍️ Подпиши...';
       const ord=await buildOrd(tok.token_id,amt,tok.price||.5,sel.negRisk);
@@ -1106,8 +1108,8 @@ async function preSignBoth(){
       const ord=await buildOrd(tok.token_id,qAmt,tok.price||0.5,qMkt.negRisk);
       const owner=creds.proxyWallet||creds.address;
       const body=JSON.stringify({order:ord,owner,orderType:'FOK'});
-      const p=qp(creds);p.set('path','order');
-      qPre[side]={url:`${ep()}?${p}`,body,ts:Date.now(),price:tok.price||0.5};
+      const hdrs=await polyHdrs('POST','order',body);
+      qPre[side]={url:CLOB+'order',body,hdrs,ts:Date.now(),price:tok.price||0.5};
     }catch(e){qPre[side]=null;console.warn('presign',side,e);}
   }
   setQReady(true);
@@ -1143,7 +1145,7 @@ async function quickBet(side){
     const pre=qPre[side];
     if(pre&&Date.now()-pre.ts<55000){
       // INSTANT: pre-signed order fires immediately — no signing delay
-      res=await fetch(pre.url,{method:'POST',headers:{'Content-Type':'application/json'},body:pre.body});
+      res=await fetch(pre.url,{method:'POST',headers:pre.hdrs,body:pre.body});
     }else{
       // Fallback: sign now (slower, wallet needed)
       if(!wallet&&!window.ethereum)throw new Error('Нужен приватный ключ в ⚙');
