@@ -478,8 +478,9 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
     <button class="bsave g" style="width:100%" onclick="applyPK()">Подключить ключ</button>
     <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--t2);cursor:pointer"><input type="checkbox" id="pk-remember" style="cursor:pointer"> Запомнить ключ в браузере <span style="font-size:11px;color:var(--t3)">(небезопасно на чужом устройстве)</span></label>
     <div class="sep"></div>
-    <div class="stitle">Proxy Wallet (необязательно)</div>
-    <div class="sdesc">Если ставки отклоняются — введи адрес прокси-кошелька Polymarket (0x...). Он отличается от EOA.</div>
+    <div class="stitle">Proxy Wallet</div>
+    <div class="sdesc">Нужен для подписи ордеров. Polymarket создаёт proxy wallet автоматически — он отличается от EOA и виден на polymarket.com/profile.</div>
+    <div id="pw-warn" style="display:none;background:#ef444420;border:1px solid #ef4444;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-bottom:8px">⚠ Proxy wallet не найден автоматически. Введи вручную — иначе ставки будут отклоняться.</div>
     <div class="field"><input id="pwi" type="text" placeholder="0x... proxy wallet address" style="font-family:var(--mono);font-size:12px"></div>
     <button class="bsave" style="width:100%;margin-bottom:10px" onclick="saveProxy()">Сохранить proxy wallet</button>
     <div class="sep"></div>
@@ -503,6 +504,9 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
   </div>
   <div id="qb-pk-warn" style="display:none;background:rgba(234,179,8,.1);border-bottom:1px solid rgba(234,179,8,.25);padding:7px 14px;font-size:12px;color:#eab308;cursor:pointer" onclick="openSet()">
     ⚡ Для мгновенных ставок — добавь приватный ключ в ⚙ (сейчас: MetaMask ~1–3s)
+  </div>
+  <div id="qb-pw-warn" style="display:none;background:rgba(239,68,68,.1);border-bottom:1px solid rgba(239,68,68,.25);padding:7px 14px;font-size:12px;color:#ef4444;cursor:pointer" onclick="openSet()">
+    ⚠ Proxy wallet не найден — ставки будут отклонены. Нажми чтобы задать в ⚙
   </div>
   <div class="qb-arena" id="qbarena">
     <button class="qb-player L" id="qbp0" onclick="quickBet(0)">
@@ -550,7 +554,7 @@ const PROXY='https://polymarrepo.vercel.app/api/proxy';
 const _savedProxy=localStorage.getItem('poly_wu');
 if(_savedProxy&&!_savedProxy.includes('vercel.app'))localStorage.removeItem('poly_wu');
 let wUrl=localStorage.getItem('poly_wu')||PROXY;
-let creds=null,wallet=null,pre=null;
+let creds=null,wallet=null,pre=null,_profileP=null;
 let mkts=[],sel=null,side=null,hist=[],stm=null,ptm=null,pitm=null;
 
 // helpers
@@ -693,6 +697,7 @@ function applyPK(){
 // ── PRESIGN ──────────────────────────────────────────────────────────────
 async function doPresign(){
   if(!wallet||!sel||!side)return;
+  if(_profileP)await _profileP;
   const amt=parseFloat($('ainp').value)||0;if(amt<=0)return;
   const toks=sel.tokens||[];
   const tok=toks.find(t=>t.outcome===(side==='YES'?'Yes':'No'))||toks[0]||{};
@@ -713,7 +718,7 @@ function startApp(){
   $('login').style.display='none';
   $('app').style.display='block';
   $('wb').style.display=wUrl?'none':'block';
-  loadHist();loadBal();loadMkts();fetchProfile();
+  loadHist();loadBal();loadMkts();_profileP=fetchProfile();
   doPing();clearInterval(pitm);pitm=setInterval(doPing,8000);
   const saved=localStorage.getItem('q_amt');
   if(saved)qSetAmt(parseFloat(saved)||10);
@@ -733,12 +738,48 @@ function startApp(){
 
 async function fetchProfile(){
   if(!creds)return;
+  if(creds.proxyWallet){console.log('[profile] already have proxyWallet',creds.proxyWallet);return;}
+  const eoa=creds.address.toLowerCase();
+  function _setPW(pw,src){
+    if(!pw||pw.toLowerCase()===eoa)return false;
+    creds.proxyWallet=pw;saveCreds(creds);
+    console.log('[profile:'+src+'] proxyWallet set:',pw);
+    const el=$('pw-warn');if(el)el.style.display='none';
+    return true;
+  }
+  // 1. CLOB /profile
   try{
     const r=await pGet('profile');
     const d=await r.json();
-    const pw=d.proxyWalletAddress||d.proxyWallet||d.proxy_wallet;
-    if(pw&&pw!==creds.address){creds.proxyWallet=pw;saveCreds(creds);console.log('[profile] proxyWallet',pw);}
-  }catch(e){console.warn('[profile]',e);}
+    console.log('[profile clob]',JSON.stringify(d).slice(0,300));
+    const pw=d.proxyWalletAddress||d.proxyWallet||d.proxy_wallet||
+             (d.address&&d.address.toLowerCase()!==eoa?d.address:null);
+    if(_setPW(pw,'clob'))return;
+  }catch(e){console.warn('[profile clob]',e.message);}
+  // 2. Gamma API
+  try{
+    const r=await fetch(`https://gamma-api.polymarket.com/profiles?address=${creds.address}`);
+    if(r.ok){
+      const d=await r.json();const obj=Array.isArray(d)?d[0]:d;
+      console.log('[profile gamma]',JSON.stringify(obj).slice(0,200));
+      const pw=obj?.proxyWallet||obj?.proxy_wallet||obj?.proxyWalletAddress;
+      if(_setPW(pw,'gamma'))return;
+    }
+  }catch(e){console.warn('[profile gamma]',e.message);}
+  // 3. Data API
+  try{
+    const r=await fetch(`https://data-api.polymarket.com/profiles?address=${creds.address}`);
+    if(r.ok){
+      const d=await r.json();const obj=Array.isArray(d)?d[0]:d;
+      console.log('[profile data]',JSON.stringify(obj).slice(0,200));
+      const pw=obj?.proxyWallet||obj?.proxy_wallet||obj?.proxyWalletAddress;
+      if(_setPW(pw,'data'))return;
+    }
+  }catch(e){console.warn('[profile data]',e.message);}
+  // Not found — show warnings
+  console.warn('[profile] proxyWallet not found — set manually in ⚙');
+  const el=$('pw-warn');if(el)el.style.display='block';
+  const bann=$('qb-pw-warn');if(bann)bann.style.display='block';
 }
 
 function editStakeCustom(){
@@ -888,6 +929,8 @@ async function placeBet(){
   if(!amt||amt<=0){alert('Введи сумму');return}
   if(!creds?.secret){alert('Войди через MetaMask для ставок');return}
   if(!wallet&&!window.ethereum){alert('Нужен MetaMask или приватный ключ (⚙)');return}
+  if(_profileP)await _profileP;
+  if(!creds.proxyWallet){console.warn('[placeBet] proxyWallet не задан — signatureType=0, попытка разместить как EOA');}
   const btn=$('bbtn');btn.disabled=true;$('psr').style.display='none';
   const t0=Date.now();
   try{
@@ -941,8 +984,12 @@ function openSet(){$('wui').value=wUrl;$('pwi').value=creds?.proxyWallet||'';$('
 function saveProxy(){
   const v=$('pwi').value.trim();
   if(!creds)return;
-  if(v&&v.startsWith('0x')&&v.length>=40){creds.proxyWallet=v;saveCreds(creds);alert('Proxy wallet сохранён: '+v.slice(0,10)+'...');}
-  else if(!v){delete creds.proxyWallet;saveCreds(creds);alert('Proxy wallet удалён');}
+  if(v&&v.startsWith('0x')&&v.length>=40){
+    creds.proxyWallet=v;saveCreds(creds);
+    const el=$('pw-warn');if(el)el.style.display='none';
+    const bann=$('qb-pw-warn');if(bann)bann.style.display='none';
+    alert('Proxy wallet сохранён: '+v.slice(0,10)+'...');
+  }else if(!v){delete creds.proxyWallet;saveCreds(creds);alert('Proxy wallet удалён');}
   else alert('Неверный адрес');
 }
 function closeSet(){$('setbk').classList.remove('on')}
@@ -1099,6 +1146,7 @@ function _qseApply(){
 // ── PRE-SIGNING — the key for instant tap ─────────────────────────────────
 async function preSignBoth(){
   if(!qMkt||!wallet||!creds)return;
+  if(_profileP)await _profileP;
   setQReady(false);
   const toks=qMkt.tokens||[];
   for(const side of [0,1]){
