@@ -34,8 +34,6 @@ export default {
       } catch(e) {}
     }
 
-    const clientIP = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For');
-
     const headers = {
       'Content-Type': 'application/json',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -44,11 +42,6 @@ export default {
       'Origin': 'https://polymarket.com',
       'Referer': 'https://polymarket.com/',
     };
-
-    if (clientIP) {
-      headers['X-Forwarded-For'] = clientIP;
-      headers['True-Client-IP'] = clientIP;
-    }
 
     if (apiKey && secret && passphrase && address) {
       const ts      = Math.floor(Date.now() / 1000).toString();
