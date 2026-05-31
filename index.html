@@ -492,8 +492,8 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
     <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--t2);cursor:pointer"><input type="checkbox" id="pk-remember" style="cursor:pointer" checked> Запомнить ключ в браузере <span style="font-size:11px;color:var(--t3)">(небезопасно на чужом устройстве)</span></label>
     <div class="sep"></div>
     <div class="stitle">Proxy Wallet</div>
-    <div class="sdesc">Нужен для подписи ордеров. Polymarket создаёт proxy wallet автоматически — он отличается от EOA и виден на polymarket.com/profile.</div>
-    <div id="pw-warn" style="display:none;background:#ef444420;border:1px solid #ef4444;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-bottom:8px">⚠ Proxy wallet не найден автоматически. Введи вручную — иначе ставки будут отклоняться.</div>
+    <div class="sdesc">Нужен для подписи ордеров. Polymarket создаёт его автоматически при регистрации.<br><a href="https://polymarket.com/profile" target="_blank" rel="noopener" style="color:var(--acc2);font-size:11px">Найти на polymarket.com/profile → Settings → API</a></div>
+    <div id="pw-warn" style="display:none;background:#ef444420;border:1px solid #ef4444;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-bottom:8px">⚠ Proxy wallet не найден автоматически. Введи вручную ниже — без него ставки отклоняются.</div>
     <div class="field"><input id="pwi" type="text" placeholder="0x... proxy wallet address" style="font-family:var(--mono);font-size:12px"></div>
     <button class="bsave" style="width:100%;margin-bottom:10px" onclick="saveProxy()">Сохранить proxy wallet</button>
     <div class="sep"></div>
@@ -645,6 +645,8 @@ async function loginMM(){
     const apiKey=k.apiKey||k.key;
     if(!apiKey)throw new Error(k.error||`HTTP ${r.status}`);
     creds={address,apiKey,secret:k.secret,passphrase:k.passphrase};
+    const pw=k.proxyWallet||k.proxy_wallet||k.proxyWalletAddress;
+    if(pw&&pw.toLowerCase()!==address.toLowerCase())creds.proxyWallet=pw;
     saveCreds(creds);startApp();
   }catch(e){showErr(e.code===4001?'Отклонено':'Ошибка: '+e.message);reset()}
 }
@@ -790,7 +792,16 @@ async function fetchProfile(){
     const el=$('pw-warn');if(el)el.style.display='none';
     return true;
   }
-  // 1. CLOB /profile
+  // 1a. CLOB /me
+  try{
+    const r=await pGet('me');
+    const d=await r.json();
+    console.log('[profile me]',JSON.stringify(d).slice(0,300));
+    const pw=d.proxyWalletAddress||d.proxyWallet||d.proxy_wallet||
+             (d.address&&d.address.toLowerCase()!==eoa?d.address:null);
+    if(_setPW(pw,'me'))return;
+  }catch(e){console.warn('[profile me]',e.message);}
+  // 1b. CLOB /profile
   try{
     const r=await pGet('profile');
     const d=await r.json();
@@ -799,6 +810,14 @@ async function fetchProfile(){
              (d.address&&d.address.toLowerCase()!==eoa?d.address:null);
     if(_setPW(pw,'clob'))return;
   }catch(e){console.warn('[profile clob]',e.message);}
+  // 1c. CLOB /profiles?address=
+  try{
+    const r=await pGet(`profiles?address=${creds.address}`);
+    const d=await r.json();const obj=Array.isArray(d)?d[0]:d;
+    console.log('[profile clob-profiles]',JSON.stringify(obj).slice(0,200));
+    const pw=obj?.proxyWalletAddress||obj?.proxyWallet||obj?.proxy_wallet;
+    if(_setPW(pw,'clob-profiles'))return;
+  }catch(e){console.warn('[profile clob-profiles]',e.message);}
   // 2. Gamma API
   try{
     const r=await fetch(`https://gamma-api.polymarket.com/profiles?address=${creds.address}`);
@@ -1192,6 +1211,10 @@ function _qseApply(){
 async function preSignBoth(){
   if(!qMkt||!wallet||!creds)return;
   if(_profileP)await _profileP;
+  if(!creds.proxyWallet){
+    const bann=$('qb-pw-warn');if(bann)bann.style.display='block';
+    return;
+  }
   setQReady(false);
   const toks=qMkt.tokens||[];
   for(const side of [0,1]){
@@ -1229,6 +1252,10 @@ async function quickBet(side){
   if(!qMkt||!creds?.secret){
     const msEl=$('qlms');if(msEl)msEl.textContent='✗ Войди в аккаунт';
     setTimeout(()=>qReset(),2000);return;
+  }
+  if(!creds.proxyWallet){
+    const msEl=$('qlms');if(msEl)msEl.textContent='✗ Нет proxy wallet';
+    setTimeout(()=>{qReset();openSet();},2000);return;
   }
   // Record price at bet time
   const lastPt=qHistory.length?qHistory[qHistory.length-1]:null;
