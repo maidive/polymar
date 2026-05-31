@@ -313,6 +313,19 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 .qlock-name{font-size:32px;font-weight:900;color:#fff;text-transform:uppercase;text-align:center;padding:0 20px;letter-spacing:-.02em;text-shadow:0 2px 20px rgba(0,0,0,.4)}
 .qlock-ico{font-size:40px}
 .qlock-ms{font-family:var(--mono);font-size:13px;color:rgba(255,255,255,.7);min-height:18px}
+/* pk one-time setup overlay */
+#pk-setup{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;gap:14px;text-align:center;background:var(--bg);z-index:10}
+#pk-setup.on{display:flex}
+.pks-icon{font-size:44px;line-height:1}
+.pks-title{font-size:20px;font-weight:700}
+.pks-desc{font-size:13px;color:var(--t2);max-width:270px;line-height:1.5}
+.pks-input{width:100%;max-width:320px;padding:13px 14px;background:var(--s1);border:1px solid var(--b2);border-radius:10px;color:var(--t1);font-family:var(--mono);font-size:12.5px;outline:none;transition:border-color .15s,box-shadow .15s}
+.pks-input:focus{border-color:var(--yes);box-shadow:0 0 0 3px var(--yglow)}
+.pks-input::placeholder{color:var(--t3)}
+.pks-hint{font-size:11px;color:var(--t3)}
+.pks-btn{width:100%;max-width:320px;padding:15px;background:var(--yes);border:none;border-radius:12px;color:#fff;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 18px var(--yglow);transition:filter .15s,transform .1s}
+.pks-btn:hover{filter:brightness(1.1)}.pks-btn:active{transform:scale(.97)}
+.pks-err{color:var(--no);font-size:12px;min-height:16px}
 /* analytics overlay */
 #qanal{position:fixed;inset:0;display:none;flex-direction:column;z-index:91;background:var(--bg);max-width:500px;margin:0 auto}
 #qanal.on{display:flex}
@@ -519,6 +532,15 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
       <div class="qb-side-label">NO</div>
       <div class="qb-status" id="qbst1"></div>
     </button>
+    <div id="pk-setup">
+      <div class="pks-icon">⚡</div>
+      <div class="pks-title">Быстрые ставки</div>
+      <div class="pks-desc">Введи приватный ключ один раз — сохраним в браузере, MetaMask больше не появится</div>
+      <input id="pks-inp" type="password" class="pks-input" placeholder="0x... приватный ключ">
+      <div class="pks-hint">Ключ хранится только в твоём браузере</div>
+      <button class="pks-btn" onclick="submitPkSetup()">Готово — начать ставить →</button>
+      <div id="pks-err" class="pks-err"></div>
+    </div>
     <div id="qlock"></div>
   </div>
 </div>
@@ -692,6 +714,27 @@ function applyPK(){
     else{sessionStorage.setItem('poly_pk',fullPk);localStorage.removeItem('poly_pk');}
     st.textContent='✓ '+w.address.slice(0,10)+'... · без MetaMask';st.style.color='var(--yes)';
   }catch{st.textContent='✗ Неверный ключ';st.style.color='var(--no)'}
+}
+
+async function submitPkSetup(){
+  const inp=$('pks-inp'),err=$('pks-err');
+  err.textContent='';
+  const raw=inp.value.trim();
+  if(!raw){err.textContent='Введи ключ';return;}
+  try{
+    const fullPk=raw.startsWith('0x')?raw:'0x'+raw;
+    const w=new ethers.Wallet(fullPk);
+    if(creds&&w.address.toLowerCase()!==creds.address.toLowerCase()){
+      err.textContent='Ключ не совпадает с кошельком '+creds.address.slice(0,8)+'...';return;
+    }
+    wallet=w;
+    localStorage.setItem('poly_pk',fullPk);
+    inp.value='';
+    $('pk-setup').classList.remove('on');
+    const st=$('pkst');
+    if(st){st.textContent='✓ '+w.address.slice(0,10)+'... · без MetaMask';st.style.color='var(--yes)';}
+    preSignBoth();
+  }catch{err.textContent='Неверный ключ — проверь и попробуй снова';}
 }
 
 // ── PRESIGN ──────────────────────────────────────────────────────────────
@@ -1119,7 +1162,9 @@ function _openBattle(){
   // Refresh pre-signed orders every 45s (salt/timestamp stays fresh)
   clearInterval(qPsTimer);
   qPsTimer=setInterval(()=>{if(!qLocked)preSignBoth();},45000);
-  $('qb-pk-warn').style.display=wallet?'none':'block';
+  if(wallet){$('pk-setup').classList.remove('on');}
+  else{$('pk-setup').classList.add('on');}
+  $('qb-pk-warn').style.display='none';
   $('qbattle').classList.add('on');
 }
 
@@ -1195,8 +1240,8 @@ async function quickBet(side){
       // INSTANT: pre-signed order fires immediately — no signing delay
       res=await fetch(pre.url,{method:'POST',headers:pre.hdrs,body:pre.body});
     }else{
-      // Fallback: sign now (slower, wallet needed)
-      if(!wallet&&!window.ethereum)throw new Error('Нужен приватный ключ в ⚙');
+      // Fallback: sign now (no MetaMask — wallet required)
+      if(!wallet){$('pk-setup').classList.add('on');qReset();return;}
       const toks=qMkt.tokens||[];
       const tok=toks.find(t=>t.outcome===(side===0?'Yes':'No'))||toks[side]||{};
       if(!tok.token_id)throw new Error('Нет tokenId');
