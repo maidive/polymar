@@ -368,6 +368,33 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
 .bsave:hover{filter:brightness(1.08)}.bsave.g{background:var(--yes)}
 .bcanc{flex:1;background:none;border:1px solid var(--b2);color:var(--t2);border-radius:10px;padding:12px;cursor:pointer;font-size:14px;transition:all .15s}
 .bcanc:hover{background:var(--s2);color:var(--t1)}
+
+/* ══ DEPOSIT MODAL ══════════════════════════════════════════════════ */
+.dep-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:70;align-items:flex-end;justify-content:center}
+.dep-back.on{display:flex}
+.dep-modal{background:var(--s1);border-top:1px solid var(--b2);border-radius:20px 20px 0 0;padding:0 20px 36px;width:100%;max-width:500px;animation:up .25s ease;max-height:92vh;overflow-y:auto}
+.dep-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.dep-addr-box{background:var(--s2);border:1px solid var(--b2);border-radius:12px;padding:14px;margin-bottom:14px}
+.dep-addr-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.dep-addr-val{font-family:var(--mono);font-size:11.5px;color:var(--t1);word-break:break-all;line-height:1.5;margin-bottom:10px}
+.dep-copy-btn{width:100%;background:var(--b2);border:none;border-radius:8px;color:var(--t2);padding:9px;font-size:13px;cursor:pointer;transition:all .15s}
+.dep-copy-btn:hover{background:var(--acc);color:#fff}
+.dep-qr-wrap{display:flex;justify-content:center;margin-bottom:14px}
+.dep-qr-wrap img{border:2px solid var(--b2);border-radius:10px}
+.dep-tabs{display:flex;gap:6px;margin-bottom:14px}
+.dep-tab{flex:1;text-align:center;padding:8px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;background:var(--s2);color:var(--t3);border:1px solid var(--b1);transition:all .15s}
+.dep-tab.on{background:var(--adim);color:var(--acc2);border-color:rgba(124,58,237,.4)}
+.dep-info{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:8px}
+.dep-swap-btn{width:100%;margin-top:10px;background:var(--adim);border:1px solid rgba(124,58,237,.3);color:var(--acc2);border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.dep-swap-btn:hover{background:rgba(124,58,237,.2)}
+.dep-transak-btn{width:100%;margin-top:10px;background:linear-gradient(135deg,#0052ff,#0066ff);border:none;color:#fff;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 18px rgba(0,82,255,.3);transition:filter .15s}
+.dep-transak-btn:hover{filter:brightness(1.1)}
+
+/* ══ PIN STYLES ══════════════════════════════════════════════════════ */
+.pks-pin-row{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;max-width:320px}
+.pks-pin-label{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;align-self:flex-start}
+.pk-pin-status{font-size:11px;padding:5px 10px;border-radius:6px;background:var(--ydim);color:#eab308;border:1px solid rgba(234,179,8,.3);margin-top:4px}
+.pk-pin-status.safe{background:var(--ydim);color:var(--yes);border-color:rgba(16,185,129,.3)}
 </style>
 </head>
 <body>
@@ -404,6 +431,7 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
     </div>
     <div class="hdr-r">
       <div class="bal" id="bal" onclick="loadBal()" ondblclick="debugBal()" title="клик = обновить">$—</div>
+      <button class="ibtn" onclick="openDep()" title="Пополнить">＋</button>
       <button class="ibtn" onclick="openSet()">⚙</button>
       <button class="ibtn" onclick="logout()" style="font-size:13px;font-weight:600">×</button>
     </div>
@@ -485,11 +513,12 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
     <div class="set-hdl"></div>
     <div class="set-title">Настройки</div>
     <div class="stitle">Приватный ключ — быстрые ставки</div>
-    <div class="sdesc">С ключом подпись ~1ms без MetaMask. Без ключа — MetaMask popup при каждой ставке.<br><a href="https://support.metamask.io/configure/accounts/how-to-export-an-accounts-private-key/" target="_blank" rel="noopener" style="color:var(--acc2);font-size:11px">Где взять ключ в MetaMask →</a></div>
-    <div class="field"><input id="pki" type="password" placeholder="0x... приватный ключ"></div>
+    <div class="sdesc">Ключ шифруется AES-256 через твой PIN. Никто кроме тебя не может его расшифровать.<br><a href="https://support.metamask.io/configure/accounts/how-to-export-an-accounts-private-key/" target="_blank" rel="noopener" style="color:var(--acc2);font-size:11px">Где взять ключ в MetaMask →</a></div>
     <div class="pk-st" id="pkst"></div>
-    <button class="bsave g" style="width:100%" onclick="applyPK()">Подключить ключ</button>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--t2);cursor:pointer"><input type="checkbox" id="pk-remember" style="cursor:pointer" checked> Запомнить ключ в браузере <span style="font-size:11px;color:var(--t3)">(небезопасно на чужом устройстве)</span></label>
+    <div class="field"><input id="pki" type="password" placeholder="0x... новый приватный ключ"></div>
+    <div class="field"><input id="pkpin" type="password" placeholder="PIN-код (4–8 цифр)" maxlength="8" inputmode="numeric" pattern="[0-9]*"></div>
+    <button class="bsave g" style="width:100%;margin-bottom:6px" onclick="applyPK()">Сохранить с PIN</button>
+    <button class="bcanc" style="width:100%" onclick="removePKFromSettings()">Удалить кошелёк</button>
     <div class="sep"></div>
     <div class="stitle">Proxy Wallet</div>
     <div class="sdesc">Нужен для подписи ордеров. Polymarket создаёт его автоматически при регистрации.<br><a href="https://polymarket.com/profile" target="_blank" rel="noopener" style="color:var(--acc2);font-size:11px">Найти на polymarket.com/profile → Settings → API</a></div>
@@ -533,13 +562,30 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
       <div class="qb-status" id="qbst1"></div>
     </button>
     <div id="pk-setup">
-      <div class="pks-icon">⚡</div>
-      <div class="pks-title">Быстрые ставки</div>
-      <div class="pks-desc">Введи приватный ключ один раз — сохраним в браузере, MetaMask больше не появится</div>
-      <input id="pks-inp" type="password" class="pks-input" placeholder="0x... приватный ключ">
-      <div class="pks-hint">Ключ хранится только в твоём браузере · <a href="https://support.metamask.io/configure/accounts/how-to-export-an-accounts-private-key/" target="_blank" rel="noopener" style="color:var(--acc2)">Где взять?</a></div>
-      <button class="pks-btn" onclick="submitPkSetup()">Готово — начать ставить →</button>
-      <div id="pks-err" class="pks-err"></div>
+      <!-- Состояние A: первый раз — ввод ключа + PIN -->
+      <div id="pks-new" style="display:none;width:100%;flex-direction:column;align-items:center;gap:14px">
+        <div class="pks-icon">⚡</div>
+        <div class="pks-title">Быстрые ставки</div>
+        <div class="pks-desc">Введи приватный ключ и PIN — ключ зашифруется AES-256 и сохранится безопасно</div>
+        <input id="pks-inp" type="password" class="pks-input" placeholder="0x... приватный ключ">
+        <div class="pks-pin-row">
+          <span class="pks-pin-label">PIN-код (4–8 цифр)</span>
+          <input id="pks-pin" type="password" class="pks-input" placeholder="Придумай PIN" maxlength="8" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="pks-hint">Ключ зашифрован · PIN только у тебя · <a href="https://support.metamask.io/configure/accounts/how-to-export-an-accounts-private-key/" target="_blank" rel="noopener" style="color:var(--acc2)">Где взять ключ?</a></div>
+        <button class="pks-btn" onclick="submitPkSetup()">Зашифровать и начать →</button>
+        <div id="pks-err" class="pks-err"></div>
+      </div>
+      <!-- Состояние B: повторный вход — только PIN -->
+      <div id="pks-unlock" style="display:none;width:100%;flex-direction:column;align-items:center;gap:14px">
+        <div class="pks-icon">🔐</div>
+        <div class="pks-title">Введи PIN</div>
+        <div class="pks-desc">Разблокируй кошелёк для ставок</div>
+        <input id="pks-pin2" type="password" class="pks-input" placeholder="PIN-код" maxlength="8" inputmode="numeric" pattern="[0-9]*" onkeydown="if(event.key==='Enter')unlockWithPin()">
+        <button class="pks-btn" onclick="unlockWithPin()">Разблокировать →</button>
+        <div id="pks-err2" class="pks-err"></div>
+        <button onclick="resetPK()" style="background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;text-decoration:underline">Сбросить кошелёк</button>
+      </div>
     </div>
     <div id="qlock"></div>
   </div>
@@ -567,6 +613,45 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
   </div>
   <div class="qa-bottom">
     <button class="qa-next-btn" onclick="qNextPoint()">Следующая точка →</button>
+  </div>
+</div>
+
+<!-- ══ DEPOSIT MODAL ══════════════════════════════════════════════════════ -->
+<div class="dep-back" id="depbk" onclick="maybeCloseDep(event)">
+  <div class="dep-modal">
+    <div class="set-hdl"></div>
+    <div class="dep-title-row">
+      <div class="set-title" style="margin-bottom:0">Пополнить кошелёк</div>
+      <button class="sh-x" onclick="closeDep()">×</button>
+    </div>
+    <div class="dep-addr-box">
+      <div class="dep-addr-lbl">Твой адрес (Polygon)</div>
+      <div class="dep-addr-val" id="dep-addr">—</div>
+      <button class="dep-copy-btn" id="dep-copy-btn" onclick="copyDepAddr()">📋 Скопировать адрес</button>
+    </div>
+    <div class="dep-qr-wrap">
+      <img id="dep-qr" src="" alt="QR" style="width:160px;height:160px;border-radius:10px;border:2px solid var(--b2)">
+    </div>
+    <div class="dep-tabs">
+      <div class="dep-tab on" id="dt0" onclick="depTab(0)">USDC</div>
+      <div class="dep-tab" id="dt1" onclick="depTab(1)">USDT</div>
+      <div class="dep-tab" id="dt2" onclick="depTab(2)">Картой</div>
+    </div>
+    <div id="dtp0">
+      <div class="dep-info">Отправь <b style="color:var(--t1)">USDC на Polygon</b> на адрес выше. Приходит за ~5 секунд.</div>
+      <div class="dep-info" style="color:var(--t3);font-size:11px;font-family:var(--mono)">Контракт USDC: 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359</div>
+    </div>
+    <div id="dtp1" style="display:none">
+      <div class="dep-info">Отправь <b style="color:var(--t1)">USDT на Polygon</b> на адрес выше.</div>
+      <div class="dep-info" style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.2);border-radius:8px;padding:9px 12px;color:#eab308;font-size:12px">⚡ После получения нужно обменять USDT → USDC (Polymarket принимает только USDC)</div>
+      <button class="dep-swap-btn" onclick="openSwap()">Обменять USDT → USDC на 1inch →</button>
+      <div class="dep-info" style="color:var(--t3);font-size:11px;margin-top:8px;font-family:var(--mono)">Контракт USDT: 0xc2132D05D31c914a87C6611C10748AEb04B58e8F</div>
+    </div>
+    <div id="dtp2" style="display:none">
+      <div class="dep-info">Купи USDC картой Visa/Mastercard — придёт прямо на твой кошелёк.</div>
+      <button class="dep-transak-btn" onclick="openTransak()">💳 Купить через Transak</button>
+      <div class="dep-info" style="color:var(--t3);font-size:11px;margin-top:10px">Комиссия ~1.5% · Минимум $20 · Работает в большинстве стран</div>
+    </div>
   </div>
 </div>
 
@@ -654,6 +739,7 @@ async function loginMM(){
 function logout(){
   localStorage.removeItem('poly_c');
   sessionStorage.removeItem('poly_pk');localStorage.removeItem('poly_pk');
+  // poly_pk_enc остаётся — он зашифрован PIN, безопасен
   creds=null;wallet=null;
   clearInterval(pitm);
   $('app').style.display='none';$('login').style.display='flex';
@@ -698,45 +784,125 @@ async function buildOrd(tokenId,uAmt,price,negRisk){
   return{...msg,signature};
 }
 
-// ── PK ───────────────────────────────────────────────────────────────────
-function applyPK(){
-  const pk=$('pki').value.trim(),st=$('pkst');
-  if(!pk){
-    wallet=null;
-    sessionStorage.removeItem('poly_pk');localStorage.removeItem('poly_pk');
-    st.textContent='Ключ удалён';st.style.color='var(--t3)';return;
-  }
+// ── PIN CRYPTO ────────────────────────────────────────────────────────────
+async function encryptPK(pk,pin){
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt']);
+  const enc=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(pk));
+  const b64=a=>btoa(String.fromCharCode(...new Uint8Array(a)));
+  return{d:b64(enc),s:b64(salt.buffer),v:b64(iv.buffer)};
+}
+async function decryptPK(stored,pin){
   try{
-    const w=new ethers.Wallet(pk.startsWith('0x')?pk:'0x'+pk);
-    if(creds&&w.address.toLowerCase()!==creds.address.toLowerCase()){st.textContent='✗ Адрес не совпадает';st.style.color='var(--no)';return}
-    wallet=w;$('pki').value='';
+    const f=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+    const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);
+    const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:f(stored.s),iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+    const dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:f(stored.v)},key,f(stored.d));
+    return new TextDecoder().decode(dec);
+  }catch{return null;}
+}
+function _getPkEnc(){try{return JSON.parse(localStorage.getItem('poly_pk_enc'));}catch{return null;}}
+
+// ── PK ───────────────────────────────────────────────────────────────────
+async function applyPK(){
+  const pk=$('pki').value.trim(),pin=$('pkpin').value.trim(),st=$('pkst');
+  if(!pk&&!pin){removePKFromSettings();return;}
+  if(!pk){st.textContent='Введи приватный ключ';st.style.color='var(--no)';return;}
+  if(!pin||pin.length<4){st.textContent='PIN минимум 4 цифры';st.style.color='var(--no)';return;}
+  if(!/^\d+$/.test(pin)){st.textContent='PIN — только цифры';st.style.color='var(--no)';return;}
+  try{
     const fullPk=pk.startsWith('0x')?pk:'0x'+pk;
-    const remember=$('pk-remember')?.checked;
-    if(remember){localStorage.setItem('poly_pk',fullPk);sessionStorage.removeItem('poly_pk');}
-    else{sessionStorage.setItem('poly_pk',fullPk);localStorage.removeItem('poly_pk');}
-    st.textContent='✓ '+w.address.slice(0,10)+'... · без MetaMask';st.style.color='var(--yes)';
-  }catch{st.textContent='✗ Неверный ключ';st.style.color='var(--no)'}
+    const w=new ethers.Wallet(fullPk);
+    if(creds&&w.address.toLowerCase()!==creds.address.toLowerCase()){st.textContent='✗ Адрес не совпадает';st.style.color='var(--no)';return;}
+    st.textContent='Шифрую...';st.style.color='#eab308';
+    const enc=await encryptPK(fullPk,pin);
+    localStorage.setItem('poly_pk_enc',JSON.stringify(enc));
+    localStorage.removeItem('poly_pk');sessionStorage.removeItem('poly_pk');
+    wallet=w;$('pki').value='';$('pkpin').value='';
+    st.textContent='✓ '+w.address.slice(0,10)+'... · AES-256 + PIN';st.style.color='var(--yes)';
+  }catch{st.textContent='✗ Неверный ключ';st.style.color='var(--no)';}
+}
+function removePKFromSettings(){
+  if(!confirm('Удалить кошелёк?'))return;
+  localStorage.removeItem('poly_pk_enc');localStorage.removeItem('poly_pk');sessionStorage.removeItem('poly_pk');
+  wallet=null;
+  const st=$('pkst');if(st){st.textContent='Кошелёк удалён';st.style.color='var(--t3)';}
 }
 
 async function submitPkSetup(){
-  const inp=$('pks-inp'),err=$('pks-err');
+  const inp=$('pks-inp'),pinInp=$('pks-pin'),err=$('pks-err');
   err.textContent='';
-  const raw=inp.value.trim();
+  const raw=inp.value.trim(),pin=pinInp.value.trim();
   if(!raw){err.textContent='Введи ключ';return;}
+  if(!pin||pin.length<4){err.textContent='PIN минимум 4 цифры';return;}
+  if(!/^\d+$/.test(pin)){err.textContent='PIN — только цифры';return;}
+  const btn=document.querySelector('#pks-new .pks-btn');
   try{
     const fullPk=raw.startsWith('0x')?raw:'0x'+raw;
     const w=new ethers.Wallet(fullPk);
-    if(creds&&w.address.toLowerCase()!==creds.address.toLowerCase()){
-      err.textContent='Ключ не совпадает с кошельком '+creds.address.slice(0,8)+'...';return;
-    }
-    wallet=w;
-    localStorage.setItem('poly_pk',fullPk);
-    inp.value='';
+    if(creds&&w.address.toLowerCase()!==creds.address.toLowerCase()){err.textContent='Ключ не совпадает с кошельком '+creds.address.slice(0,8)+'...';return;}
+    if(btn){btn.textContent='Шифрую...';btn.disabled=true;}
+    const enc=await encryptPK(fullPk,pin);
+    localStorage.setItem('poly_pk_enc',JSON.stringify(enc));
+    localStorage.removeItem('poly_pk');sessionStorage.removeItem('poly_pk');
+    wallet=w;inp.value='';pinInp.value='';
     $('pk-setup').classList.remove('on');
-    const st=$('pkst');
-    if(st){st.textContent='✓ '+w.address.slice(0,10)+'... · без MetaMask';st.style.color='var(--yes)';}
+    if(btn){btn.textContent='Зашифровать и начать →';btn.disabled=false;}
+    const st=$('pkst');if(st){st.textContent='✓ '+w.address.slice(0,10)+'... · AES-256 + PIN';st.style.color='var(--yes)';}
     preSignBoth();
-  }catch{err.textContent='Неверный ключ — проверь и попробуй снова';}
+  }catch{
+    err.textContent='Неверный ключ — проверь и попробуй снова';
+    if(btn){btn.textContent='Зашифровать и начать →';btn.disabled=false;}
+  }
+}
+
+async function unlockWithPin(){
+  const pinInp=$('pks-pin2'),err=$('pks-err2');
+  err.textContent='';
+  const pin=pinInp.value.trim();
+  if(!pin){err.textContent='Введи PIN';return;}
+  const enc=_getPkEnc();
+  if(!enc){$('pk-setup').classList.remove('on');return;}
+  const btn=document.querySelector('#pks-unlock .pks-btn');
+  if(btn){btn.textContent='Проверяю...';btn.disabled=true;}
+  const pk=await decryptPK(enc,pin);
+  if(!pk){
+    err.textContent='Неверный PIN';
+    if(btn){btn.textContent='Разблокировать →';btn.disabled=false;}
+    pinInp.value='';pinInp.focus();return;
+  }
+  try{
+    const w=new ethers.Wallet(pk);
+    if(creds&&w.address.toLowerCase()!==creds.address.toLowerCase()){
+      err.textContent='Кошелёк не совпадает с аккаунтом';
+      if(btn){btn.textContent='Разблокировать →';btn.disabled=false;}return;
+    }
+    wallet=w;pinInp.value='';
+    $('pk-setup').classList.remove('on');
+    if(btn){btn.textContent='Разблокировать →';btn.disabled=false;}
+    const st=$('pkst');if(st){st.textContent='✓ '+w.address.slice(0,10)+'... · AES-256 + PIN';st.style.color='var(--yes)';}
+    preSignBoth();
+  }catch{
+    err.textContent='Ошибка расшифровки';
+    if(btn){btn.textContent='Разблокировать →';btn.disabled=false;}
+  }
+}
+
+function resetPK(){
+  if(!confirm('Сбросить кошелёк? Потребуется ввести ключ заново.'))return;
+  localStorage.removeItem('poly_pk_enc');localStorage.removeItem('poly_pk');sessionStorage.removeItem('poly_pk');
+  wallet=null;$('pk-setup').classList.remove('on');
+  const st=$('pkst');if(st){st.textContent='';}
+}
+
+function showPkSetupOverlay(){
+  const enc=_getPkEnc();
+  const nw=$('pks-new'),ul=$('pks-unlock');
+  if(enc){nw.style.display='none';ul.style.display='flex';setTimeout(()=>$('pks-pin2')?.focus(),100);}
+  else{nw.style.display='flex';ul.style.display='none';setTimeout(()=>$('pks-inp')?.focus(),100);}
+  $('pk-setup').classList.add('on');
 }
 
 // ── PRESIGN ──────────────────────────────────────────────────────────────
@@ -767,15 +933,19 @@ function startApp(){
   doPing();clearInterval(pitm);pitm=setInterval(doPing,8000);
   const saved=localStorage.getItem('q_amt');
   if(saved)qSetAmt(parseFloat(saved)||10);
-  const savedPk=sessionStorage.getItem('poly_pk')||localStorage.getItem('poly_pk');
-  if(savedPk&&!wallet){
+  // Загрузка кошелька: зашифрованный (PIN нужен при открытии арены)
+  const enc=_getPkEnc();
+  const legacyPk=sessionStorage.getItem('poly_pk')||localStorage.getItem('poly_pk');
+  if(enc){
+    const st=$('pkst');
+    if(st){st.textContent='🔐 Кошелёк защищён PIN — открой матч для разблокировки';st.style.color='#eab308';}
+  }else if(legacyPk&&!wallet){
     try{
-      const w=new ethers.Wallet(savedPk);
+      const w=new ethers.Wallet(legacyPk);
       if(!creds||w.address.toLowerCase()===creds.address.toLowerCase()){
         wallet=w;
         const st=$('pkst');
-        if(st){st.textContent='✓ '+w.address.slice(0,10)+'... · без MetaMask';st.style.color='var(--yes)';}
-        if(localStorage.getItem('poly_pk')){const cb=$('pk-remember');if(cb)cb.checked=true;}
+        if(st){st.textContent='⚠ Ключ не зашифрован — обнови в ⚙';st.style.color='#eab308';}
       }
     }catch{}
   }
@@ -1182,7 +1352,7 @@ function _openBattle(){
   clearInterval(qPsTimer);
   qPsTimer=setInterval(()=>{if(!qLocked)preSignBoth();},45000);
   if(wallet){$('pk-setup').classList.remove('on');}
-  else{$('pk-setup').classList.add('on');}
+  else{showPkSetupOverlay();}
   $('qb-pk-warn').style.display='none';
   $('qbattle').classList.add('on');
 }
@@ -1392,6 +1562,43 @@ function qReset(){
   qLocked=false;qBetTime=null;qBetPrice=null;qBetSide=null;qBetMs=null;
   $('qlock').className='';
   $('qbst0').textContent='';$('qbst1').textContent='';
+}
+
+// ── DEPOSIT ──────────────────────────────────────────────────────────────
+function openDep(){
+  if(!creds)return;
+  const addr=creds.proxyWallet||creds.address;
+  $('dep-addr').textContent=addr;
+  const qr=$('dep-qr');
+  qr.src=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${addr}&bgcolor=0d0d16&color=eeeef8&margin=10`;
+  qr.style.display='block';
+  depTab(0);
+  $('depbk').classList.add('on');
+}
+function closeDep(){$('depbk').classList.remove('on')}
+function maybeCloseDep(e){if(e.target===$('depbk'))closeDep()}
+function depTab(i){
+  [0,1,2].forEach(j=>{
+    $('dt'+j).classList.toggle('on',j===i);
+    $('dtp'+j).style.display=j===i?'block':'none';
+  });
+}
+async function copyDepAddr(){
+  const addr=creds?.proxyWallet||creds?.address;if(!addr)return;
+  try{
+    await navigator.clipboard.writeText(addr);
+    const btn=$('dep-copy-btn');
+    btn.textContent='✓ Скопировано!';btn.style.background='var(--yes)';btn.style.color='#fff';
+    setTimeout(()=>{btn.textContent='📋 Скопировать адрес';btn.style.background='';btn.style.color='';},2000);
+  }catch{alert('Адрес: '+(creds?.proxyWallet||creds?.address));}
+}
+function openSwap(){
+  const addr=creds?.proxyWallet||creds?.address||'';
+  window.open(`https://app.1inch.io/#/137/unified/swap/USDT/USDC?referrer=${addr}`,'_blank');
+}
+function openTransak(){
+  const addr=creds?.proxyWallet||creds?.address||'';
+  window.open(`https://global.transak.com/?network=polygon&cryptoCurrencyCode=USDC&walletAddress=${addr}`,'_blank');
 }
 
 // ── KEYBOARD ─────────────────────────────────────────────────────────────
