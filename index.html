@@ -408,14 +408,32 @@ body{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;min-hei
       <div class="lsub">Торговый терминал Polymarket</div>
     </div>
     <div class="lbox">
-      <button class="btn-mm" id="mm-btn" onclick="loginMM()">🦊 Войти через MetaMask</button>
-      <div class="divider">или вручную</div>
-      <div class="field"><label>Wallet Address</label><input id="ia" type="text" placeholder="0x3d1e..."></div>
-      <div class="field"><label>API Key</label><input id="ik" type="text" placeholder="019e3d6a-..."></div>
-      <div class="field"><label>Secret</label><input id="is" type="password" placeholder="base64..."></div>
-      <div class="field"><label>Passphrase</label><input id="ip" type="password" placeholder="passphrase..."></div>
-      <button class="btn-go" id="login-btn" onclick="doLogin()">Войти</button>
-      <div class="lerr" id="lerr"></div>
+      <!-- PIN unlock (показывается когда есть poly_pk_enc) -->
+      <div id="login-pin" style="display:none">
+        <div style="text-align:center;font-size:15px;font-weight:600;margin-bottom:6px">⚡ Добро пожаловать</div>
+        <div style="text-align:center;font-size:13px;color:var(--t3);margin-bottom:18px">Введи PIN для разблокировки</div>
+        <div class="field"><label>PIN</label><input id="lpin2" type="password" placeholder="••••" inputmode="numeric" autocomplete="current-password"></div>
+        <button class="btn-go" id="lpin-btn" onclick="loginWithPIN()">Разблокировать</button>
+        <div style="text-align:center;margin-top:14px">
+          <span style="font-size:12px;color:var(--t3);cursor:pointer;text-decoration:underline" onclick="resetPkEnc()">Другой кошелёк</span>
+        </div>
+        <div class="lerr" id="lerr2"></div>
+      </div>
+      <!-- Полная форма логина -->
+      <div id="login-full">
+        <button class="btn-mm" id="mm-btn" onclick="loginMM()">🦊 Войти через MetaMask</button>
+        <div class="divider">или с приватным ключом</div>
+        <div class="field"><label>Приватный ключ</label><input id="lpk" type="password" placeholder="0x..." autocomplete="new-password"></div>
+        <div class="field"><label>PIN (4+ цифр)</label><input id="lpin" type="password" placeholder="••••" inputmode="numeric" autocomplete="new-password"></div>
+        <button class="btn-go" id="lpk-btn" onclick="loginWithPK()" style="background:linear-gradient(135deg,#059669,#10b981);box-shadow:0 4px 18px rgba(16,185,129,.3)">🔑 Войти с ключом</button>
+        <div class="divider" style="margin-top:4px">или вручную (API ключи)</div>
+        <div class="field"><label>Wallet Address</label><input id="ia" type="text" placeholder="0x3d1e..."></div>
+        <div class="field"><label>API Key</label><input id="ik" type="text" placeholder="019e3d6a-..."></div>
+        <div class="field"><label>Secret</label><input id="is" type="password" placeholder="base64..."></div>
+        <div class="field"><label>Passphrase</label><input id="ip" type="password" placeholder="passphrase..."></div>
+        <button class="btn-go" id="login-btn" onclick="doLogin()">Войти</button>
+        <div class="lerr" id="lerr"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -688,6 +706,81 @@ async function doLogin(){
   btn.disabled=false;btn.textContent='Войти';
 }
 
+async function signClobAuth(w){
+  const serverTs=await fetch('https://clob.polymarket.com/time').then(r=>r.json()).catch(()=>Math.floor(Date.now()/1000));
+  const ts=String(typeof serverTs==='number'?serverTs:Math.floor(Date.now()/1000));
+  const address=w.address;
+  const sig=await w.signTypedData(
+    {name:'ClobAuthDomain',version:'1',chainId:137},
+    {ClobAuth:[{name:'address',type:'address'},{name:'timestamp',type:'string'},{name:'nonce',type:'uint256'},{name:'message',type:'string'}]},
+    {address,timestamp:ts,nonce:0,message:'This message attests that I control the given wallet'}
+  );
+  const hdrs={'POLY_ADDRESS':address,'POLY_SIGNATURE':sig,'POLY_TIMESTAMP':ts,'POLY_NONCE':'0'};
+  let r=await fetch('https://clob.polymarket.com/auth/api-key',{method:'POST',headers:hdrs});
+  let k=await r.json().catch(()=>({}));
+  if(!r.ok||(!k.apiKey&&!k.key)){
+    r=await fetch('https://clob.polymarket.com/auth/derive-api-key',{method:'GET',headers:hdrs});
+    k=await r.json().catch(()=>({}));
+  }
+  const apiKey=k.apiKey||k.key;
+  if(!apiKey)throw new Error(k.error||`HTTP ${r.status}`);
+  return{address,apiKey,secret:k.secret,passphrase:k.passphrase};
+}
+
+async function loginWithPK(){
+  const pk=V('lpk').trim().replace(/^0x/,'');
+  const pin=V('lpin');
+  if(pk.length<60)return showErr('Неверный приватный ключ');
+  if(pin.length<4)return showErr('PIN минимум 4 символа');
+  const btn=$('lpk-btn');
+  btn.disabled=true;btn.textContent='🔑 Подключаю...';
+  try{
+    const w=new ethers.Wallet('0x'+pk);
+    btn.textContent='🔑 Получаю ключи...';
+    creds=await signClobAuth(w);
+    wallet=w;
+    const enc=await encryptPK('0x'+pk,pin);
+    localStorage.setItem('poly_pk_enc',JSON.stringify(enc));
+    saveCreds(creds);startApp();
+  }catch(e){
+    showErr('Ошибка: '+e.message);
+    btn.disabled=false;btn.textContent='🔑 Войти с ключом';
+  }
+}
+
+async function loginWithPIN(){
+  const pin=V('lpin2');
+  if(!pin)return showErr2('Введи PIN');
+  const btn=$('lpin-btn');
+  btn.disabled=true;btn.textContent='⏳ Проверяю...';
+  const enc=_getPkEnc();
+  if(!enc){showErr2('Ключ не найден');btn.disabled=false;btn.textContent='Разблокировать';return;}
+  const pk=await decryptPK(enc,pin);
+  if(!pk){showErr2('Неверный PIN');btn.disabled=false;btn.textContent='Разблокировать';return;}
+  try{
+    const w=new ethers.Wallet(pk);
+    wallet=w;
+    const saved=rdCreds();
+    if(saved?.apiKey){creds=saved;startApp();}
+    else{
+      btn.textContent='🔑 Обновляю ключи...';
+      creds=await signClobAuth(w);
+      saveCreds(creds);startApp();
+    }
+  }catch(e){
+    showErr2('Ошибка: '+e.message);
+    btn.disabled=false;btn.textContent='Разблокировать';
+  }
+}
+
+function resetPkEnc(){
+  if(!confirm('Удалить сохранённый ключ? Придётся вводить PK заново.'))return;
+  localStorage.removeItem('poly_pk_enc');localStorage.removeItem('poly_c');
+  $('login-pin').style.display='none';$('login-full').style.display='block';
+}
+
+function showErr2(m){const e=$('lerr2');e.textContent=m;e.style.display='block';}
+
 async function loginMM(){
   const btn=$('mm-btn');
   const reset=()=>{btn.disabled=false;btn.innerHTML='🦊 Войти через MetaMask'};
@@ -742,7 +835,15 @@ function logout(){
   // poly_pk_enc остаётся — он зашифрован PIN, безопасен
   creds=null;wallet=null;
   clearInterval(pitm);
-  $('app').style.display='none';$('login').style.display='flex';
+  $('app').style.display='none';
+  if(localStorage.getItem('poly_pk_enc')){
+    $('login-pin').style.display='block';$('login-full').style.display='none';
+    $('lerr2').style.display='none';$('lpin2').value='';
+    $('lpin-btn').disabled=false;$('lpin-btn').textContent='Разблокировать';
+  }else{
+    $('login-pin').style.display='none';$('login-full').style.display='block';
+  }
+  $('login').style.display='flex';
 }
 
 // ── PROXY ────────────────────────────────────────────────────────────────
@@ -1616,10 +1717,14 @@ document.addEventListener('keydown',e=>{
 // ── INIT ─────────────────────────────────────────────────────────────────
 (function(){
   const s=rdCreds();
+  const hasPkEnc=!!localStorage.getItem('poly_pk_enc');
   if(s){
     creds=s;
     [['ia','address'],['ik','apiKey'],['is','secret'],['ip','passphrase']].forEach(([id,k])=>{$(id).value=s[k]||''});
     startApp();
+  }else if(hasPkEnc){
+    $('login-pin').style.display='block';
+    $('login-full').style.display='none';
   }
   if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)&&!window.ethereum){
     $('mm-btn').innerHTML='🦊 Открыть в MetaMask';
